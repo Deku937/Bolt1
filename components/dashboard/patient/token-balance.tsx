@@ -87,5 +87,3 @@ export function TokenBalance() {
     </Card>
   );
 }
-
-export { TokenBalance }
