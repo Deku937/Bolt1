@@ -323,7 +323,7 @@ export function Chatbot() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    sendMessage(inputValue, selectedImage);
+    sendMessage(inputValue, selectedImage ?? undefined);
   };
 
   const quickQuestions = [
