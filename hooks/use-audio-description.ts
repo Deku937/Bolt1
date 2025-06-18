@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { audioDescriptionService } from '@/lib/audio-description';
 
 export function useAudioDescription() {
   const elementRef = useRef<HTMLElement>(null);
@@ -11,17 +10,13 @@ export function useAudioDescription() {
     if (!element) return;
 
     const handleFocus = () => {
-      const settings = audioDescriptionService.getSettings();
-      if (settings.enabled) {
-        audioDescriptionService.describeElement(element);
-      }
+      // Audio description logic would go here
+      console.log('Element focused for audio description');
     };
 
     const handleMouseEnter = () => {
-      const settings = audioDescriptionService.getSettings();
-      if (settings.enabled && settings.autoDescribe) {
-        audioDescriptionService.describeElement(element);
-      }
+      // Auto-describe logic would go here
+      console.log('Element hovered for audio description');
     };
 
     element.addEventListener('focus', handleFocus);
@@ -34,16 +29,24 @@ export function useAudioDescription() {
   }, []);
 
   const describe = (customText?: string) => {
-    if (elementRef.current) {
-      audioDescriptionService.describeElement(elementRef.current, customText);
+    if (elementRef.current && customText) {
+      console.log('Describing element:', customText);
     }
+  };
+
+  const speak = (text: string) => {
+    console.log('Speaking:', text);
+  };
+
+  const stop = () => {
+    console.log('Stopping audio description');
   };
 
   return {
     elementRef,
     describe,
-    speak: audioDescriptionService.speak.bind(audioDescriptionService),
-    stop: audioDescriptionService.stop.bind(audioDescriptionService),
-    isPlaying: audioDescriptionService.getIsPlaying(),
+    speak,
+    stop,
+    isPlaying: false,
   };
 }

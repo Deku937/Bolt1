@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/providers/auth-provider';
 import { Button } from '@/components/ui/button';
@@ -17,19 +17,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useAudioDescription } from '@/hooks/use-audio-description';
 
 export function Header() {
   const { user, profile, signOut } = useAuth();
   const { t } = useLanguage();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const logoRef = useRef<HTMLAnchorElement>(null);
-  const menuRef = useRef<HTMLButtonElement>(null);
-  
-  // Si vous utilisez vraiment useAudioDescription, vous devrez adapter son typage
-  // const { elementRef: logoRef } = useAudioDescription<HTMLAnchorElement>();
-  // const { elementRef: menuRef } = useAudioDescription<HTMLButtonElement>();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -63,7 +56,6 @@ export function Header() {
         <Link 
           href="/" 
           className="flex items-center gap-3 font-bold text-xl group"
-          ref={logoRef}
           aria-label="MindWell home page"
         >
           <div className="w-10 h-10 bg-gradient-to-br from-primary to-healing rounded-xl flex items-center justify-center group-hover:scale-110 transition-all duration-300 relative">
@@ -75,9 +67,197 @@ export function Header() {
           </span>
         </Link>
 
-        {/* Le reste du code reste inchangé */}
-        {/* ... */}
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center gap-8" role="navigation" aria-label="Main navigation">
+          {[
+            { href: '/#features', label: t('nav.features') },
+            { href: '/#about', label: t('nav.about') },
+            { href: '/#contact', label: t('nav.contact') }
+          ].map((item, index) => (
+            <Link 
+              key={item.href}
+              href={item.href} 
+              className="text-sm font-medium hover:text-primary transition-all duration-200 relative group"
+              aria-label={`Navigate to ${item.label} section`}
+            >
+              {item.label}
+              <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-primary to-healing group-hover:w-full transition-all duration-300"></div>
+            </Link>
+          ))}
+        </nav>
+
+        {/* Desktop Actions */}
+        <div className="hidden md:flex items-center gap-4">
+          <AudioDescriptionToggle />
+          <LanguageToggle />
+          <ThemeToggle />
+          
+          {user ? (
+            <div className="flex items-center gap-3">
+              {/* Notification Bell */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="relative hover:bg-white/10"
+                aria-label="Notifications"
+              >
+                <Bell className="w-4 h-4" />
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+              </Button>
+
+              {/* Enhanced User Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="relative h-10 w-10 rounded-full hover:bg-white/10 group"
+                    aria-label={`User menu for ${profile?.first_name || user.email}`}
+                  >
+                    <Avatar className="h-10 w-10 ring-2 ring-primary/30 group-hover:ring-primary/50 transition-all duration-200">
+                      <AvatarFallback className="bg-gradient-to-br from-primary to-healing text-white font-semibold">
+                        {getUserInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-64 glass-effect border-white/20" align="end" forceMount>
+                  <div className="flex flex-col space-y-2 p-4">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-12 w-12">
+                        <AvatarFallback className="bg-gradient-to-br from-primary to-healing text-white">
+                          {getUserInitials()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium leading-none truncate">
+                          {profile?.first_name && profile?.last_name 
+                            ? `${profile.first_name} ${profile.last_name}`
+                            : user.email
+                          }
+                        </p>
+                        <p className="text-xs leading-none text-muted-foreground mt-1 truncate">
+                          {user.email}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-xs text-green-600 font-medium">Online</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  {profile?.user_type && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link href={profile.user_type === 'patient' ? '/dashboard/patient' : '/dashboard/professional'} className="flex items-center gap-3">
+                          <User className="mr-2 h-4 w-4" />
+                          <span>{t('nav.dashboard')}</span>
+                          <Sparkles className="w-3 h-3 ml-auto text-primary" />
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  <DropdownMenuItem onClick={handleSignOut} className="text-red-600 focus:text-red-600">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sign out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" asChild className="hover:bg-white/10 button-glow">
+                <Link href="/sign-in">{t('nav.signin')}</Link>
+              </Button>
+              <Button asChild className="btn-primary button-glow">
+                <Link href="/sign-up">
+                  {t('nav.signup')}
+                  <Sparkles className="ml-2 w-4 h-4" />
+                </Link>
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Menu Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden hover:bg-white/10"
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          aria-label={isMenuOpen ? 'Close mobile menu' : 'Open mobile menu'}
+          aria-expanded={isMenuOpen}
+        >
+          {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </Button>
       </div>
+
+      {/* Enhanced Mobile Menu */}
+      {isMenuOpen && (
+        <div className="md:hidden glass-effect border-t border-white/10 animate-slide-up" role="navigation" aria-label="Mobile navigation">
+          <div className="container mx-auto px-4 py-6 space-y-6">
+            {/* Navigation Links */}
+            <div className="space-y-4">
+              {[
+                { href: '/#features', label: t('nav.features') },
+                { href: '/#about', label: t('nav.about') },
+                { href: '/#contact', label: t('nav.contact') }
+              ].map((item, index) => (
+                <Link 
+                  key={item.href}
+                  href={item.href}
+                  className="block text-sm font-medium hover:text-primary transition-colors py-2 border-b border-white/10 last:border-0"
+                  onClick={() => setIsMenuOpen(false)}
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                  aria-label={`Navigate to ${item.label} section`}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+            
+            {/* Controls */}
+            <div className="flex items-center gap-4 pt-4 border-t border-white/10">
+              <AudioDescriptionToggle />
+              <LanguageToggle />
+              <ThemeToggle />
+            </div>
+            
+            {/* User Actions */}
+            {user ? (
+              <div className="space-y-3 pt-4 border-t border-white/10">
+                {profile?.user_type && (
+                  <Button asChild className="w-full btn-primary">
+                    <Link href={profile.user_type === 'patient' ? '/dashboard/patient' : '/dashboard/professional'}>
+                      <User className="mr-2 w-4 h-4" />
+                      {t('nav.dashboard')}
+                      <Sparkles className="ml-2 w-4 h-4" />
+                    </Link>
+                  </Button>
+                )}
+                <Button variant="outline" onClick={handleSignOut} className="w-full border-red-200 text-red-600 hover:bg-red-50">
+                  <LogOut className="mr-2 w-4 h-4" />
+                  Sign out
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3 pt-4 border-t border-white/10">
+                <Button variant="ghost" asChild className="w-full hover:bg-white/10">
+                  <Link href="/sign-in">{t('nav.signin')}</Link>
+                </Button>
+                <Button asChild className="w-full btn-primary">
+                  <Link href="/sign-up">
+                    {t('nav.signup')}
+                    <Sparkles className="ml-2 w-4 h-4" />
+                  </Link>
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 }
