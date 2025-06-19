@@ -46,6 +46,24 @@ export function HeroSection() {
     router.push(dashboardPath);
   };
 
+  const handleStartJourney = () => {
+    // If user is not signed in, redirect to sign up page
+    if (!user) {
+      router.push('/sign-up');
+      return;
+    }
+
+    // If user is signed in but has no profile or user type, redirect to sign up to choose type
+    if (!profile?.user_type) {
+      router.push('/sign-up');
+      return;
+    }
+
+    // If user already has a type, redirect to dashboard
+    const dashboardPath = profile.user_type === 'patient' ? '/dashboard/patient' : '/dashboard/professional';
+    router.push(dashboardPath);
+  };
+
   if (!mounted) {
     return (
       <section className="pt-32 pb-20 px-4 gradient-bg relative overflow-hidden min-h-screen flex items-center">
@@ -105,12 +123,12 @@ export function HeroSection() {
 
           {/* Enhanced CTA Section */}
           <div className="pt-8 space-y-8 animate-scale-in">
-            {/* Main CTA Button with Glow Effect */}
+            {/* Main CTA Button - Now functional */}
             <div className="flex justify-center">
               <Button 
                 size="lg" 
-                className="px-12 py-6 text-lg font-semibold btn-primary button-glow animate-glow cursor-default"
-                disabled
+                className="px-12 py-6 text-lg font-semibold btn-primary button-glow animate-glow"
+                onClick={handleStartJourney}
               >
                 <Heart className="mr-3 w-6 h-6" />
                 {t('hero.cta.primary')}
