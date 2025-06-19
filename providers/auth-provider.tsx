@@ -10,7 +10,7 @@ interface AuthContextType {
   profile: Profile | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, firstName: string, lastName: string, userType: 'patient' | 'professional') => Promise<void>;
+  signUp: (email: string, password: string, firstName?: string, lastName?: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateUserType: (userType: 'patient' | 'professional') => Promise<void>;
@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error);
-        toast.error('Error loading profile');
+        // Don't show error toast for missing profile - it's expected for new users
       } else {
         setProfile(data);
       }
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signUp = async (email: string, password: string, firstName: string, lastName: string, userType: 'patient' | 'professional') => {
+  const signUp = async (email: string, password: string, firstName?: string, lastName?: string) => {
     try {
       setLoading(true);
       
@@ -91,22 +91,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
 
       if (data.user) {
-        // Create profile
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: data.user.id,
-            first_name: firstName,
-            last_name: lastName,
-            user_type: userType,
-          });
-
-        if (profileError) {
-          console.error('Error creating profile:', profileError);
-          toast.error('Error creating profile');
-        } else {
-          toast.success('Account created successfully! Please check your email to verify your account.');
-        }
+        // Don't create profile here - let user choose type on home page
+        toast.success('Account created successfully! Welcome to MindWell.');
       }
     } catch (error: any) {
       console.error('Sign up error:', error);
@@ -157,18 +143,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
 
     try {
-      const { error } = await supabase
+      // Try to update existing profile first
+      const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
-        .update({ user_type: userType, updated_at: new Date().toISOString() })
-        .eq('user_id', user.id);
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
 
-      if (error) throw error;
+      if (existingProfile) {
+        // Update existing profile
+        const { error } = await supabase
+          .from('profiles')
+          .update({ 
+            user_type: userType, 
+            updated_at: new Date().toISOString() 
+          })
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+      } else {
+        // Create new profile
+        const { error } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: user.id,
+            user_type: userType,
+            first_name: user.email?.split('@')[0] || 'User',
+            last_name: '',
+          });
+
+        if (error) throw error;
+      }
 
       await fetchProfile(user.id);
-      toast.success(`Profile updated to ${userType}`);
+      toast.success(`Welcome! You've joined as a ${userType}`);
     } catch (error: any) {
       console.error('Error updating user type:', error);
       toast.error('Error updating profile');
+      throw error;
     }
   };
 

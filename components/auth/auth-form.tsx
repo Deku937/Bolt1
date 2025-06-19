@@ -31,19 +31,11 @@ export function AuthForm({ mode, preselectedType }: AuthFormProps) {
 
     try {
       if (mode === 'signup') {
-        if (!firstName.trim() || !lastName.trim()) {
-          toast.error('Please enter your first and last name');
-          return;
-        }
+        // Simple sign up without profile creation
+        await signUp(email, password, firstName.trim(), lastName.trim());
         
-        if (!preselectedType) {
-          toast.error('Please select account type');
-          return;
-        }
-
-        await signUp(email, password, firstName.trim(), lastName.trim(), preselectedType);
-        toast.success('Account created! Please check your email to verify your account.');
-        router.push('/sign-in');
+        // Redirect to home page where user can choose type
+        router.push('/');
       } else {
         await signIn(email, password);
         // Redirect will be handled by the auth state change
@@ -65,9 +57,7 @@ export function AuthForm({ mode, preselectedType }: AuthFormProps) {
         <p className="text-muted-foreground">
           {mode === 'signin' 
             ? 'Continue your mental health journey' 
-            : preselectedType 
-              ? `Join as a ${preselectedType}`
-              : 'Start your mental health journey today'
+            : 'Start your mental health journey today'
           }
         </p>
       </CardHeader>
@@ -86,7 +76,6 @@ export function AuthForm({ mode, preselectedType }: AuthFormProps) {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     className="pl-10"
-                    required
                   />
                 </div>
               </div>
@@ -101,7 +90,6 @@ export function AuthForm({ mode, preselectedType }: AuthFormProps) {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     className="pl-10"
-                    required
                   />
                 </div>
               </div>

@@ -1,18 +1,16 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { AuthForm } from '@/components/auth/auth-form';
 
 export default function SignUpPage() {
   const { user, profile } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const type = searchParams.get('type') as 'patient' | 'professional' | null;
 
   useEffect(() => {
-    // If user is already signed in, redirect to appropriate dashboard
+    // If user is already signed in and has a profile, redirect to dashboard
     if (user && profile?.user_type) {
       const dashboardPath = profile.user_type === 'patient' ? '/dashboard/patient' : '/dashboard/professional';
       router.push(dashboardPath);
@@ -26,7 +24,7 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 gradient-bg">
       <div className="w-full max-w-md">
-        <AuthForm mode="signup" preselectedType={type || undefined} />
+        <AuthForm mode="signup" />
       </div>
     </div>
   );
