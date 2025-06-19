@@ -194,9 +194,9 @@ export function Header() {
         </Button>
       </div>
 
-      {/* Enhanced Mobile Menu */}
+      {/* Enhanced Mobile Menu - Fixed Overflow Issues */}
       {isMenuOpen && (
-        <div className="md:hidden glass-effect border-t border-white/10 animate-slide-up" role="navigation" aria-label="Mobile navigation">
+        <div className="md:hidden glass-effect border-t border-white/10 animate-slide-up max-h-[calc(100vh-4rem)] overflow-y-auto" role="navigation" aria-label="Mobile navigation">
           <div className="container mx-auto px-4 py-6 space-y-6">
             {/* Navigation Links */}
             <div className="space-y-4">
@@ -219,25 +219,66 @@ export function Header() {
             </div>
             
             {/* Controls */}
-            <div className="flex items-center gap-4 pt-4 border-t border-white/10">
+            <div className="flex items-center justify-center gap-4 pt-4 border-t border-white/10">
               <AudioDescriptionToggle />
               <LanguageToggle />
               <ThemeToggle />
             </div>
             
-            {/* User Actions */}
+            {/* User Actions - Mobile Optimized */}
             {user ? (
-              <div className="space-y-3 pt-4 border-t border-white/10">
+              <div className="space-y-4 pt-4 border-t border-white/10">
+                {/* User Info Card - Mobile Friendly */}
+                <div className="flex items-center gap-3 p-4 rounded-lg bg-white/5 border border-white/10">
+                  <Avatar className="h-12 w-12 ring-2 ring-primary/30 flex-shrink-0">
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-healing text-white font-semibold">
+                      {getUserInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium leading-none truncate">
+                      {profile?.first_name && profile?.last_name 
+                        ? `${profile.first_name} ${profile.last_name}`
+                        : user.email
+                      }
+                    </p>
+                    <p className="text-xs leading-none text-muted-foreground mt-1 truncate">
+                      {user.email}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-xs text-green-600 font-medium">Online</span>
+                    </div>
+                  </div>
+                  {/* Notification indicator */}
+                  <div className="flex-shrink-0">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                  </div>
+                </div>
+
+                {/* Dashboard Button */}
                 {profile?.user_type && (
                   <Button asChild className="w-full btn-primary">
-                    <Link href={profile.user_type === 'patient' ? '/dashboard/patient' : '/dashboard/professional'}>
+                    <Link 
+                      href={profile.user_type === 'patient' ? '/dashboard/patient' : '/dashboard/professional'}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
                       <User className="mr-2 w-4 h-4" />
                       {t('nav.dashboard')}
                       <Sparkles className="ml-2 w-4 h-4" />
                     </Link>
                   </Button>
                 )}
-                <Button variant="outline" onClick={handleSignOut} className="w-full border-red-200 text-red-600 hover:bg-red-50">
+
+                {/* Sign Out Button */}
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    handleSignOut();
+                    setIsMenuOpen(false);
+                  }} 
+                  className="w-full border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                >
                   <LogOut className="mr-2 w-4 h-4" />
                   Sign out
                 </Button>
@@ -245,10 +286,12 @@ export function Header() {
             ) : (
               <div className="space-y-3 pt-4 border-t border-white/10">
                 <Button variant="ghost" asChild className="w-full hover:bg-white/10">
-                  <Link href="/sign-in">{t('nav.signin')}</Link>
+                  <Link href="/sign-in" onClick={() => setIsMenuOpen(false)}>
+                    {t('nav.signin')}
+                  </Link>
                 </Button>
                 <Button asChild className="w-full btn-primary">
-                  <Link href="/sign-up">
+                  <Link href="/sign-up" onClick={() => setIsMenuOpen(false)}>
                     {t('nav.signup')}
                     <Sparkles className="ml-2 w-4 h-4" />
                   </Link>
