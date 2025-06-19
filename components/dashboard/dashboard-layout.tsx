@@ -22,7 +22,6 @@ import {
   LogOut,
   Coins,
   Sparkles,
-  Bell,
   Search
 } from 'lucide-react';
 import Link from 'next/link';
@@ -271,7 +270,7 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
 
       {/* Main content */}
       <div className="lg:pl-64 xl:pl-72">
-        {/* Enhanced Top bar with scroll-responsive greeting */}
+        {/* Enhanced Top bar with scroll-responsive greeting - NOTIFICATION SUPPRIMÉE */}
         <header className={cn(
           "sticky top-0 z-30 glass-effect border-b border-white/10 px-4 md:px-6 transition-all duration-300",
           scrolled ? "py-2 md:py-3 shadow-lg" : "py-3 md:py-4"
@@ -322,22 +321,13 @@ export function DashboardLayout({ children, userType }: DashboardLayoutProps) {
                 />
               </div>
 
-              {/* Notifications */}
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="relative hover:bg-white/10"
-                aria-label="Notifications - 1 unread"
-              >
-                <Bell className="w-4 h-4 md:w-5 md:h-5" />
-                <div className="absolute -top-1 -right-1 w-2 h-2 md:w-3 md:h-3 bg-red-500 rounded-full animate-pulse"></div>
-              </Button>
+              {/* NOTIFICATION SUPPRIMÉE - Plus d'icône Bell */}
 
               <AudioDescriptionToggle />
               <LanguageToggle />
               <ThemeToggle />
               
-              {/* Enhanced User Menu */}
+              {/* Enhanced User Menu - DÉPLACÉ PLUS À GAUCHE */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 
