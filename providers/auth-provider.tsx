@@ -9,7 +9,7 @@ interface SimpleProfile {
   user_type: 'patient' | 'professional' | null;
   first_name: string;
   last_name: string;
-  user_type_locked: boolean; // New field to track if user type is locked
+  user_type_locked: boolean;
 }
 
 interface AuthContextType {
@@ -80,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session?.user?.id);
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -116,6 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, firstName?: string, lastName?: string) => {
     try {
       setLoading(true);
+      console.log('🔐 Starting sign up process...');
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -129,7 +131,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Sign up error:', error);
+        throw error;
+      }
+
+      console.log('✅ Sign up successful:', data.user?.id);
 
       if (data.user) {
         // Create a simple profile in localStorage
@@ -166,6 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
+      console.log('🔐 Starting sign in process...');
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -173,6 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
+        console.error('❌ Sign in error:', error);
         if (error.message.includes('Email not confirmed')) {
           toast.error('Please check your email and click the verification link before signing in.');
         } else if (error.message.includes('Invalid login credentials')) {
@@ -182,6 +191,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         throw error;
       }
+      
+      console.log('✅ Sign in successful:', data.user?.id);
       
       if (data.user) {
         // Load or create profile
