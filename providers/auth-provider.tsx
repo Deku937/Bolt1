@@ -67,6 +67,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const clearProfile = (userId: string) => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      localStorage.removeItem(getStorageKey(userId));
+    } catch (error) {
+      console.error('Error clearing profile:', error);
+    }
+  };
+
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -85,6 +95,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event, session?.user?.id);
+      
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -199,16 +211,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      console.log('🚪 Starting sign out process...');
       
+      // Get current user ID before signing out
+      const currentUserId = user?.id;
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('❌ Supabase sign out error:', error);
+        throw error;
+      }
+      
+      console.log('✅ Supabase sign out successful');
+      
+      // Clear local state immediately
       setUser(null);
       setProfile(null);
       setSession(null);
+      
+      // Clear localStorage profile if we have the user ID
+      if (currentUserId) {
+        clearProfile(currentUserId);
+        console.log('🗑️ Cleared localStorage profile');
+      }
+      
+      // Clear any other localStorage items related to the user
+      if (typeof window !== 'undefined') {
+        // Clear any other app-specific storage
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('mindwell_')) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        console.log('🧹 Cleared all MindWell localStorage items');
+      }
+      
       toast.success('Signed out successfully');
+      console.log('🎉 Sign out completed successfully');
+      
+      // Force a page reload to ensure clean state
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
+      
     } catch (error: any) {
-      console.error('Sign out error:', error);
-      toast.error('Error signing out');
+      console.error('❌ Sign out error:', error);
+      toast.error('Error signing out. Please try again.');
+      
+      // Force clear state even if there was an error
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      
+      // Force reload as fallback
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
     }
   };
 
