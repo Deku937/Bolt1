@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useAuth } from '@/providers/auth-provider';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -53,8 +52,7 @@ export function Header() {
     }`}>
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Enhanced Logo */}
-        <Link 
-          href="/" 
+        <div 
           className="flex items-center gap-3 font-bold text-xl group"
           aria-label="MindWell home page"
         >
@@ -65,7 +63,7 @@ export function Header() {
           <span className="text-gradient animate-gradient">
             MindWell
           </span>
-        </Link>
+        </div>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-8" role="navigation" aria-label="Main navigation">
@@ -74,15 +72,14 @@ export function Header() {
             { href: '/#about', label: t('nav.about') },
             { href: '/#contact', label: t('nav.contact') }
           ].map((item, index) => (
-            <Link 
+            <div
               key={item.href}
-              href={item.href} 
-              className="text-sm font-medium hover:text-primary transition-all duration-200 relative group"
+              className="text-sm font-medium hover:text-primary transition-all duration-200 relative group cursor-pointer"
               aria-label={`Navigate to ${item.label} section`}
             >
               {item.label}
               <div className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-primary to-healing group-hover:w-full transition-all duration-300"></div>
-            </Link>
+            </div>
           ))}
         </nav>
 
@@ -94,16 +91,18 @@ export function Header() {
           
           {user ? (
             <div className="flex items-center gap-3">
-              {/* Notification Bell */}
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="relative hover:bg-white/10"
-                aria-label="Notifications"
-              >
-                <Bell className="w-4 h-4" />
-                <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-              </Button>
+              {/* Only show notification bell for professionals */}
+              {profile?.user_type === 'professional' && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="relative hover:bg-white/10"
+                  aria-label="Notifications"
+                >
+                  <Bell className="w-4 h-4" />
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                </Button>
+              )}
 
               {/* Enhanced User Menu - Fixed for Mobile */}
               <DropdownMenu>
@@ -135,7 +134,7 @@ export function Header() {
                           {getUserInitials()}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 overflow-hidden">
                         <p className="text-sm font-medium leading-none truncate">
                           {profile?.first_name && profile?.last_name 
                             ? `${profile.first_name} ${profile.last_name}`
@@ -156,11 +155,11 @@ export function Header() {
                   {profile?.user_type && (
                     <>
                       <DropdownMenuItem asChild>
-                        <Link href={profile.user_type === 'patient' ? '/dashboard/patient' : '/dashboard/professional'} className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 cursor-pointer">
                           <User className="mr-2 h-4 w-4" />
                           <span>{t('nav.dashboard')}</span>
                           <Sparkles className="w-3 h-3 ml-auto text-primary" />
-                        </Link>
+                        </div>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                     </>
@@ -174,14 +173,12 @@ export function Header() {
             </div>
           ) : (
             <div className="flex items-center gap-3">
-              <Button variant="ghost" asChild className="hover:bg-white/10 button-glow">
-                <Link href="/sign-in">{t('nav.signin')}</Link>
+              <Button variant="ghost" className="hover:bg-white/10 button-glow">
+                {t('nav.signin')}
               </Button>
-              <Button asChild className="btn-primary button-glow">
-                <Link href="/sign-up">
-                  {t('nav.signup')}
-                  <Sparkles className="ml-2 w-4 h-4" />
-                </Link>
+              <Button className="btn-primary button-glow">
+                {t('nav.signup')}
+                <Sparkles className="ml-2 w-4 h-4" />
               </Button>
             </div>
           )}
@@ -211,16 +208,15 @@ export function Header() {
                 { href: '/#about', label: t('nav.about') },
                 { href: '/#contact', label: t('nav.contact') }
               ].map((item, index) => (
-                <Link 
+                <div
                   key={item.href}
-                  href={item.href}
-                  className="block text-sm font-medium hover:text-primary transition-colors py-2 border-b border-white/10 last:border-0"
+                  className="block text-sm font-medium hover:text-primary transition-colors py-2 border-b border-white/10 last:border-0 cursor-pointer"
                   onClick={() => setIsMenuOpen(false)}
                   style={{ animationDelay: `${index * 0.1}s` }}
                   aria-label={`Navigate to ${item.label} section`}
                 >
                   {item.label}
-                </Link>
+                </div>
               ))}
             </div>
             
@@ -256,23 +252,25 @@ export function Header() {
                       <span className="text-xs text-green-600 font-medium">Online</span>
                     </div>
                   </div>
-                  {/* Notification indicator */}
-                  <div className="flex-shrink-0">
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                  </div>
+                  {/* Only show notification for professionals in mobile */}
+                  {profile?.user_type === 'professional' && (
+                    <div className="flex-shrink-0">
+                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Dashboard Button */}
                 {profile?.user_type && (
                   <Button asChild className="w-full btn-primary">
-                    <Link 
-                      href={profile.user_type === 'patient' ? '/dashboard/patient' : '/dashboard/professional'}
+                    <div
                       onClick={() => setIsMenuOpen(false)}
+                      className="cursor-pointer"
                     >
                       <User className="mr-2 w-4 h-4" />
                       {t('nav.dashboard')}
                       <Sparkles className="ml-2 w-4 h-4" />
-                    </Link>
+                    </div>
                   </Button>
                 )}
 
@@ -291,16 +289,16 @@ export function Header() {
               </div>
             ) : (
               <div className="space-y-3 pt-4 border-t border-white/10">
-                <Button variant="ghost" asChild className="w-full hover:bg-white/10">
-                  <Link href="/sign-in" onClick={() => setIsMenuOpen(false)}>
+                <Button variant="ghost" className="w-full hover:bg-white/10">
+                  <div onClick={() => setIsMenuOpen(false)} className="cursor-pointer">
                     {t('nav.signin')}
-                  </Link>
+                  </div>
                 </Button>
-                <Button asChild className="w-full btn-primary">
-                  <Link href="/sign-up" onClick={() => setIsMenuOpen(false)}>
+                <Button className="w-full btn-primary">
+                  <div onClick={() => setIsMenuOpen(false)} className="cursor-pointer">
                     {t('nav.signup')}
                     <Sparkles className="ml-2 w-4 h-4" />
-                  </Link>
+                  </div>
                 </Button>
               </div>
             )}
