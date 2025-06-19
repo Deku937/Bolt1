@@ -67,4 +67,19 @@ CREATE POLICY "Users can insert own profile"
 CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
 ```
 
-After running this, your sign-up should work. Then you can run the full migration later for all the other features.
+## Email Confirmation Issue
+
+If you're getting "Email not confirmed" errors, you have two options:
+
+### Option 1: Disable Email Confirmation (Recommended for Development)
+1. Go to your Supabase Dashboard
+2. Navigate to Authentication > Settings
+3. Under "User Signups", toggle OFF "Enable email confirmations"
+4. Save the changes
+
+### Option 2: Confirm Emails Manually
+- Users must check their email and click the verification link after signing up
+- Only then can they sign in to the application
+
+After running this migration and handling email confirmation, your sign-up and sign-in should work correctly.
+```

@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface AuthFormProps {
   mode: 'signin' | 'signup';
@@ -22,27 +23,29 @@ export function AuthForm({ mode, preselectedType }: AuthFormProps) {
   const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showEmailConfirmationInfo, setShowEmailConfirmationInfo] = useState(false);
   const router = useRouter();
   const { signIn, signUp } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setShowEmailConfirmationInfo(false);
 
     try {
       if (mode === 'signup') {
-        // Simple sign up without profile creation
         await signUp(email, password, firstName.trim(), lastName.trim());
-        
-        // Redirect to home page where user can choose type
-        router.push('/');
+        // Don't redirect immediately - let user confirm email first if needed
       } else {
         await signIn(email, password);
         // Redirect will be handled by the auth state change
         router.push('/');
       }
     } catch (error: any) {
-      // Error is already handled in the auth provider
+      if (error.message === 'Email not confirmed') {
+        setShowEmailConfirmationInfo(true);
+      }
+      // Error is already handled in the auth provider with toast
     } finally {
       setLoading(false);
     }
@@ -62,6 +65,15 @@ export function AuthForm({ mode, preselectedType }: AuthFormProps) {
         </p>
       </CardHeader>
       <CardContent>
+        {showEmailConfirmationInfo && (
+          <Alert className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Please check your email inbox (including spam folder) and click the verification link to confirm your account before signing in.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === 'signup' && (
             <div className="grid grid-cols-2 gap-4">
@@ -76,6 +88,7 @@ export function AuthForm({ mode, preselectedType }: AuthFormProps) {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     className="pl-10"
+                    required
                   />
                 </div>
               </div>
@@ -90,6 +103,7 @@ export function AuthForm({ mode, preselectedType }: AuthFormProps) {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     className="pl-10"
+                    required
                   />
                 </div>
               </div>
@@ -145,6 +159,12 @@ export function AuthForm({ mode, preselectedType }: AuthFormProps) {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? 'Loading...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
           </Button>
+
+          {mode === 'signup' && (
+            <div className="text-xs text-muted-foreground text-center mt-4">
+              After creating your account, you may need to verify your email address before signing in.
+            </div>
+          )}
         </form>
       </CardContent>
     </Card>

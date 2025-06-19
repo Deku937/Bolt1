@@ -66,14 +66,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', userId)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
-        // Don't show error toast for missing profile - it's expected for new users
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // Profile doesn't exist - this is normal for new users
+          setProfile(null);
+        } else if (error.code === '42P01') {
+          // Table doesn't exist - database migration needed
+          console.warn('Database tables not found. Please run the migration in your Supabase dashboard.');
+          setProfile(null);
+        } else {
+          console.error('Error fetching profile:', error);
+          setProfile(null);
+        }
       } else {
         setProfile(data);
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
+      setProfile(null);
     } finally {
       setLoading(false);
     }
@@ -86,13 +96,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+          }
+        }
       });
 
       if (error) throw error;
 
       if (data.user) {
-        // Don't create profile here - let user choose type on home page
-        toast.success('Account created successfully! Welcome to MindWell.');
+        // Check if email confirmation is required
+        if (data.user.email_confirmed_at) {
+          toast.success('Account created successfully! Welcome to MindWell.');
+        } else {
+          toast.success('Account created! Please check your email to verify your account before signing in.');
+        }
       }
     } catch (error: any) {
       console.error('Sign up error:', error);
@@ -112,12 +133,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message === 'Email not confirmed') {
+          toast.error('Please check your email and click the verification link before signing in.');
+        } else {
+          toast.error(error.message || 'Error signing in');
+        }
+        throw error;
+      }
       
       toast.success('Signed in successfully!');
     } catch (error: any) {
       console.error('Sign in error:', error);
-      toast.error(error.message || 'Error signing in');
       throw error;
     } finally {
       setLoading(false);
@@ -143,12 +170,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
 
     try {
-      // Try to update existing profile first
+      // Check if profiles table exists by attempting to query it
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
         .single();
+
+      if (fetchError && fetchError.code === '42P01') {
+        // Table doesn't exist - show helpful error
+        toast.error('Database setup required. Please run the migration in your Supabase dashboard.');
+        throw new Error('Database tables not found. Please run the migration.');
+      }
 
       if (existingProfile) {
         // Update existing profile
@@ -168,8 +201,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .insert({
             user_id: user.id,
             user_type: userType,
-            first_name: user.email?.split('@')[0] || 'User',
-            last_name: '',
+            first_name: user.user_metadata?.first_name || user.email?.split('@')[0] || 'User',
+            last_name: user.user_metadata?.last_name || '',
           });
 
         if (error) throw error;
@@ -179,7 +212,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       toast.success(`Welcome! You've joined as a ${userType}`);
     } catch (error: any) {
       console.error('Error updating user type:', error);
-      toast.error('Error updating profile');
+      if (error.message.includes('Database tables not found')) {
+        toast.error('Database setup required. Please check the migration instructions.');
+      } else {
+        toast.error('Error updating profile. Please try again.');
+      }
       throw error;
     }
   };
