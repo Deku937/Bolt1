@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase, Profile } from '@/lib/supabase';
+import { createClient, Profile } from '@/lib/supabase';
 import { toast } from 'sonner';
 
 interface AuthContextType {
@@ -24,6 +24,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Create supabase client instance
+  const supabase = createClient();
 
   useEffect(() => {
     // Get initial session
@@ -53,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [supabase.auth]);
 
   const fetchProfile = async (userId: string) => {
     try {
