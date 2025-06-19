@@ -105,7 +105,7 @@ export function Header() {
                 <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
               </Button>
 
-              {/* Enhanced User Menu */}
+              {/* Enhanced User Menu - Fixed for Mobile */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 
@@ -121,10 +121,16 @@ export function Header() {
                     <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-64 glass-effect border-white/20" align="end" forceMount>
+                <DropdownMenuContent 
+                  className="w-72 glass-effect border-white/20" 
+                  align="end" 
+                  forceMount
+                  sideOffset={8}
+                  alignOffset={-4}
+                >
                   <div className="flex flex-col space-y-2 p-4">
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-12 w-12">
+                      <Avatar className="h-12 w-12 flex-shrink-0">
                         <AvatarFallback className="bg-gradient-to-br from-primary to-healing text-white">
                           {getUserInitials()}
                         </AvatarFallback>
@@ -225,17 +231,17 @@ export function Header() {
               <ThemeToggle />
             </div>
             
-            {/* User Actions - Mobile Optimized */}
+            {/* User Actions - Mobile Optimized with Fixed Overflow */}
             {user ? (
               <div className="space-y-4 pt-4 border-t border-white/10">
-                {/* User Info Card - Mobile Friendly */}
-                <div className="flex items-center gap-3 p-4 rounded-lg bg-white/5 border border-white/10">
+                {/* User Info Card - Mobile Friendly - FIXED CONTAINER */}
+                <div className="flex items-center gap-3 p-4 rounded-lg bg-white/5 border border-white/10 mx-auto max-w-full">
                   <Avatar className="h-12 w-12 ring-2 ring-primary/30 flex-shrink-0">
                     <AvatarFallback className="bg-gradient-to-br from-primary to-healing text-white font-semibold">
                       {getUserInitials()}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 overflow-hidden">
                     <p className="text-sm font-medium leading-none truncate">
                       {profile?.first_name && profile?.last_name 
                         ? `${profile.first_name} ${profile.last_name}`
