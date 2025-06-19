@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/providers/language-provider';
 import { useAuth } from '@/providers/auth-provider';
-import { UserCheck, Stethoscope, Sparkles, Heart, Star, Zap, ArrowRight } from 'lucide-react';
+import { UserCheck, Stethoscope, Sparkles, Heart, Star, Zap, ArrowRight, Lock, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -26,7 +26,13 @@ export function HeroSection() {
       return;
     }
 
-    // If user is signed in, update their user type
+    // Check if user type is already locked
+    if (profile?.user_type_locked && profile?.user_type) {
+      toast.error(`Your account is already set as a ${profile.user_type}. To change your role, please create a new account.`);
+      return;
+    }
+
+    // If user is signed in, update their user type (this will lock it permanently)
     try {
       await updateUserType(userType);
       
@@ -77,6 +83,7 @@ export function HeroSection() {
 
   // Show different content based on auth state
   const showUserTypeChoice = user && !profile?.user_type;
+  const isUserTypeLocked = profile?.user_type_locked && profile?.user_type;
 
   return (
     <section className="pt-32 pb-20 px-4 gradient-bg relative overflow-hidden min-h-screen flex items-center">
@@ -113,128 +120,182 @@ export function HeroSection() {
             
             <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed animate-fade-in">
               {showUserTypeChoice 
-                ? 'Welcome! Please choose how you\'d like to use MindWell to get started with your personalized experience.'
+                ? 'Welcome! Please choose how you\'d like to use MindWell. This choice will be permanent for this account.'
                 : t('hero.subtitle')
               }
             </p>
           </div>
 
-          {/* CTA Section */}
-          <div className="pt-8 space-y-8 animate-scale-in" id="user-type-choice">
-            {!showUserTypeChoice ? (
-              // Default CTA for non-authenticated users
-              <>
-                <div className="flex justify-center">
+          {/* Show locked status if user type is already set */}
+          {isUserTypeLocked && (
+            <div className="animate-scale-in">
+              <div className="max-w-md mx-auto p-6 rounded-2xl bg-gradient-to-r from-primary/10 to-healing/10 border border-primary/20">
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-primary to-healing rounded-full flex items-center justify-center">
+                    <Lock className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-bold text-lg">Account Type Locked</h3>
+                    <p className="text-sm text-muted-foreground capitalize">
+                      You're registered as a {profile?.user_type}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-center space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Your account type is permanently set and cannot be changed.
+                  </p>
                   <Button 
-                    size="lg" 
-                    className="px-12 py-6 text-lg font-semibold btn-primary button-glow animate-glow"
                     onClick={handleStartJourney}
+                    className="w-full btn-primary"
                   >
-                    <Heart className="mr-3 w-6 h-6" />
-                    {user && profile?.user_type ? 'Go to Dashboard' : t('hero.cta.primary')}
-                    <Sparkles className="ml-3 w-6 h-6" />
+                    Go to Dashboard
+                    <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </div>
+              </div>
+            </div>
+          )}
 
-                {/* Join Options for non-authenticated users */}
-                {!user && (
-                  <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+          {/* CTA Section */}
+          {!isUserTypeLocked && (
+            <div className="pt-8 space-y-8 animate-scale-in" id="user-type-choice">
+              {!showUserTypeChoice ? (
+                // Default CTA for non-authenticated users
+                <>
+                  <div className="flex justify-center">
                     <Button 
-                      variant="outline" 
                       size="lg" 
-                      className="group px-10 py-6 text-base font-medium border-2 border-primary/30 hover:bg-primary/10 hover:border-primary transition-all duration-300 card-hover button-glow bg-white/80 backdrop-blur-sm"
+                      className="px-12 py-6 text-lg font-semibold btn-primary button-glow animate-glow"
+                      onClick={handleStartJourney}
+                    >
+                      <Heart className="mr-3 w-6 h-6" />
+                      {user && profile?.user_type ? 'Go to Dashboard' : t('hero.cta.primary')}
+                      <Sparkles className="ml-3 w-6 h-6" />
+                    </Button>
+                  </div>
+
+                  {/* Join Options for non-authenticated users */}
+                  {!user && (
+                    <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+                      <Button 
+                        variant="outline" 
+                        size="lg" 
+                        className="group px-10 py-6 text-base font-medium border-2 border-primary/30 hover:bg-primary/10 hover:border-primary transition-all duration-300 card-hover button-glow bg-white/80 backdrop-blur-sm"
+                        onClick={() => handleJoinAs('patient')}
+                      >
+                        <UserCheck className="mr-3 w-6 h-6 text-primary group-hover:scale-110 transition-transform" />
+                        <span className="font-semibold">Join as Patient</span>
+                        <div className="ml-3 w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                      </Button>
+                      
+                      <Button 
+                        variant="outline" 
+                        size="lg" 
+                        className="group px-10 py-6 text-base font-medium border-2 border-healing/30 hover:bg-healing/10 hover:border-healing transition-all duration-300 card-hover button-glow bg-white/80 backdrop-blur-sm"
+                        onClick={() => handleJoinAs('professional')}
+                      >
+                        <Stethoscope className="mr-3 w-6 h-6 text-healing group-hover:scale-110 transition-transform" />
+                        <span className="font-semibold">Join as Professional</span>
+                        <div className="ml-3 w-2 h-2 bg-healing rounded-full animate-pulse"></div>
+                      </Button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                // User type choice for authenticated users without profile
+                <div className="space-y-8">
+                  {/* Warning about permanent choice */}
+                  <div className="max-w-2xl mx-auto p-4 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800">
+                    <div className="flex items-center gap-3">
+                      <Shield className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                      <div className="text-sm">
+                        <p className="font-medium text-amber-800 dark:text-amber-200">Important: This choice is permanent</p>
+                        <p className="text-amber-700 dark:text-amber-300">
+                          Once you select your account type, it cannot be changed. You would need to create a new account to switch roles.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-6 justify-center items-center max-w-4xl mx-auto">
+                    {/* Patient Option */}
+                    <div 
+                      className="group p-8 rounded-2xl border-2 border-primary/30 hover:border-primary bg-white/80 backdrop-blur-sm hover:bg-primary/5 transition-all duration-300 cursor-pointer card-hover flex-1 max-w-md"
                       onClick={() => handleJoinAs('patient')}
                     >
-                      <UserCheck className="mr-3 w-6 h-6 text-primary group-hover:scale-110 transition-transform" />
-                      <span className="font-semibold">Join as Patient</span>
-                      <div className="ml-3 w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                    </Button>
-                    
-                    <Button 
-                      variant="outline" 
-                      size="lg" 
-                      className="group px-10 py-6 text-base font-medium border-2 border-healing/30 hover:bg-healing/10 hover:border-healing transition-all duration-300 card-hover button-glow bg-white/80 backdrop-blur-sm"
+                      <div className="text-center space-y-4">
+                        <div className="w-20 h-20 bg-gradient-to-br from-primary/10 to-primary/20 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300">
+                          <UserCheck className="w-10 h-10 text-primary" />
+                        </div>
+                        <h3 className="text-xl font-bold text-primary">I'm seeking support</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Connect with licensed professionals, track your mood, and access personalized mental health resources.
+                        </p>
+                        <div className="flex items-center justify-center gap-2 text-primary font-medium">
+                          <span>Join as Patient</span>
+                          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        </div>
+                        <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                          <Lock className="w-3 h-3" />
+                          <span>Permanent choice</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Professional Option */}
+                    <div 
+                      className="group p-8 rounded-2xl border-2 border-healing/30 hover:border-healing bg-white/80 backdrop-blur-sm hover:bg-healing/5 transition-all duration-300 cursor-pointer card-hover flex-1 max-w-md"
                       onClick={() => handleJoinAs('professional')}
                     >
-                      <Stethoscope className="mr-3 w-6 h-6 text-healing group-hover:scale-110 transition-transform" />
-                      <span className="font-semibold">Join as Professional</span>
-                      <div className="ml-3 w-2 h-2 bg-healing rounded-full animate-pulse"></div>
-                    </Button>
-                  </div>
-                )}
-              </>
-            ) : (
-              // User type choice for authenticated users without profile
-              <div className="space-y-8">
-                <div className="flex flex-col sm:flex-row gap-6 justify-center items-center max-w-4xl mx-auto">
-                  {/* Patient Option */}
-                  <div 
-                    className="group p-8 rounded-2xl border-2 border-primary/30 hover:border-primary bg-white/80 backdrop-blur-sm hover:bg-primary/5 transition-all duration-300 cursor-pointer card-hover flex-1 max-w-md"
-                    onClick={() => handleJoinAs('patient')}
-                  >
-                    <div className="text-center space-y-4">
-                      <div className="w-20 h-20 bg-gradient-to-br from-primary/10 to-primary/20 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300">
-                        <UserCheck className="w-10 h-10 text-primary" />
-                      </div>
-                      <h3 className="text-xl font-bold text-primary">I'm seeking support</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Connect with licensed professionals, track your mood, and access personalized mental health resources.
-                      </p>
-                      <div className="flex items-center justify-center gap-2 text-primary font-medium">
-                        <span>Join as Patient</span>
-                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      <div className="text-center space-y-4">
+                        <div className="w-20 h-20 bg-gradient-to-br from-healing/10 to-healing/20 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300">
+                          <Stethoscope className="w-10 h-10 text-healing" />
+                        </div>
+                        <h3 className="text-xl font-bold text-healing">I'm a mental health professional</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Manage your practice, connect with clients, and provide professional mental health services.
+                        </p>
+                        <div className="flex items-center justify-center gap-2 text-healing font-medium">
+                          <span>Join as Professional</span>
+                          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        </div>
+                        <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                          <Lock className="w-3 h-3" />
+                          <span>Permanent choice</span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Professional Option */}
-                  <div 
-                    className="group p-8 rounded-2xl border-2 border-healing/30 hover:border-healing bg-white/80 backdrop-blur-sm hover:bg-healing/5 transition-all duration-300 cursor-pointer card-hover flex-1 max-w-md"
-                    onClick={() => handleJoinAs('professional')}
-                  >
-                    <div className="text-center space-y-4">
-                      <div className="w-20 h-20 bg-gradient-to-br from-healing/10 to-healing/20 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300">
-                        <Stethoscope className="w-10 h-10 text-healing" />
-                      </div>
-                      <h3 className="text-xl font-bold text-healing">I'm a mental health professional</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Manage your practice, connect with clients, and provide professional mental health services.
-                      </p>
-                      <div className="flex items-center justify-center gap-2 text-healing font-medium">
-                        <span>Join as Professional</span>
-                        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Choose carefully - this decision cannot be undone for this account.
+                    </p>
                   </div>
                 </div>
+              )}
 
-                <div className="text-center">
+              {/* Sign in link for non-authenticated users */}
+              {!user && (
+                <div className="pt-6 animate-fade-in">
                   <p className="text-sm text-muted-foreground">
-                    Don't worry, you can always change this later in your settings.
+                    Already have an account?{' '}
+                    <Link 
+                      href="/sign-in" 
+                      className="text-primary hover:text-primary/80 font-medium hover:underline transition-all duration-200 inline-flex items-center gap-1"
+                    >
+                      Sign in here
+                      <Sparkles className="w-3 h-3" />
+                    </Link>
                   </p>
                 </div>
-              </div>
-            )}
-
-            {/* Sign in link for non-authenticated users */}
-            {!user && (
-              <div className="pt-6 animate-fade-in">
-                <p className="text-sm text-muted-foreground">
-                  Already have an account?{' '}
-                  <Link 
-                    href="/sign-in" 
-                    className="text-primary hover:text-primary/80 font-medium hover:underline transition-all duration-200 inline-flex items-center gap-1"
-                  >
-                    Sign in here
-                    <Sparkles className="w-3 h-3" />
-                  </Link>
-                </p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* Trust Indicators - Only show for non-authenticated users */}
-          {!showUserTypeChoice && (
+          {!showUserTypeChoice && !isUserTypeLocked && (
             <div className="pt-20 animate-slide-up">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
                 {[

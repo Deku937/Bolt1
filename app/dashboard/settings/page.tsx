@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AudioDescriptionToggle } from '@/components/ui/audio-description-toggle';
-import { User, Bell, Shield, Globe, Volume2 } from 'lucide-react';
+import { User, Bell, Shield, Globe, Volume2, Lock, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 
 export default function SettingsPage() {
@@ -52,6 +52,27 @@ export default function SettingsPage() {
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" defaultValue={user?.email || ''} />
               </div>
+              
+              {/* Account Type - Show as locked */}
+              <div>
+                <Label htmlFor="userType">Account Type</Label>
+                <div className="flex items-center gap-3 mt-1">
+                  <Input 
+                    id="userType" 
+                    value={profile?.user_type ? `${profile.user_type.charAt(0).toUpperCase()}${profile.user_type.slice(1)}` : 'Not set'} 
+                    disabled 
+                    className="flex-1"
+                  />
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Lock className="w-3 h-3" />
+                    <span>Locked</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Account type cannot be changed. Create a new account to switch roles.
+                </p>
+              </div>
+              
               <div>
                 <Label htmlFor="timezone">Timezone</Label>
                 <Select defaultValue="UTC-5">
@@ -204,6 +225,37 @@ export default function SettingsPage() {
                     <SelectItem value="uk">United Kingdom</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Account Type Information */}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+                Account Type Policy
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg dark:bg-amber-900/20 dark:border-amber-800">
+                <div className="flex items-start gap-3">
+                  <Lock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-amber-800 dark:text-amber-200">
+                      Your account type is permanently set as: <span className="capitalize font-bold">{profile?.user_type || 'Not set'}</span>
+                    </h4>
+                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                      For security and data integrity reasons, account types cannot be changed once selected. 
+                      This ensures that patient data remains separate from professional accounts and maintains 
+                      proper access controls.
+                    </p>
+                    <p className="text-sm text-amber-700 dark:text-amber-300">
+                      If you need to switch between patient and professional roles, you'll need to create 
+                      a separate account with a different email address.
+                    </p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

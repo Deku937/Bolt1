@@ -9,6 +9,7 @@ interface SimpleProfile {
   user_type: 'patient' | 'professional' | null;
   first_name: string;
   last_name: string;
+  user_type_locked: boolean; // New field to track if user type is locked
 }
 
 interface AuthContextType {
@@ -42,7 +43,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     try {
       const stored = localStorage.getItem(getStorageKey(userId));
-      return stored ? JSON.parse(stored) : null;
+      if (stored) {
+        const profile = JSON.parse(stored);
+        // Ensure user_type_locked exists (for backward compatibility)
+        if (profile.user_type_locked === undefined) {
+          profile.user_type_locked = profile.user_type !== null;
+        }
+        return profile;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -116,6 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           user_type: null, // Will be set when user chooses
           first_name: firstName || email.split('@')[0],
           last_name: lastName || '',
+          user_type_locked: false, // Not locked until they choose
         };
         
         saveProfile(data.user.id, newProfile);
@@ -132,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (error.message.includes('Email not confirmed')) {
         toast.error('Please check your email and click the verification link.');
       } else {
-        toast.error('Account created! You can now sign in.');
+        toast.success('Account created! You can now sign in.');
       }
       
       throw error;
@@ -171,6 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             user_type: null,
             first_name: data.user.user_metadata?.first_name || data.user.email?.split('@')[0] || 'User',
             last_name: data.user.user_metadata?.last_name || '',
+            user_type_locked: false, // Not locked until they choose
           };
           saveProfile(data.user.id, userProfile);
         }
@@ -209,17 +220,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user_type: null,
         first_name: user.user_metadata?.first_name || user.email?.split('@')[0] || 'User',
         last_name: user.user_metadata?.last_name || '',
+        user_type_locked: false,
       };
+
+      // Check if user type is already locked
+      if (currentProfile.user_type_locked && currentProfile.user_type) {
+        toast.error(`Your account is already set as a ${currentProfile.user_type}. To change your role, please create a new account.`);
+        return;
+      }
 
       const updatedProfile: SimpleProfile = {
         ...currentProfile,
         user_type: userType,
+        user_type_locked: true, // Lock the user type permanently
       };
 
       saveProfile(user.id, updatedProfile);
       setProfile(updatedProfile);
       
-      toast.success(`Welcome! You've joined as a ${userType}`);
+      toast.success(`Welcome! You've joined as a ${userType}. This choice is now permanent for this account.`);
     } catch (error: any) {
       console.error('Error updating user type:', error);
       toast.error('Error updating profile. Please try again.');
