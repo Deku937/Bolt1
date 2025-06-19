@@ -1,11 +1,27 @@
-import { createBrowserClient } from '@supabase/ssr';
+import { createBrowserClient, createServerClient } from '@supabase/ssr'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Détection si le code s'exécute côté serveur ou client
+const isServer = typeof window === 'undefined'
 
-export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+// Récupération des variables d'environnement
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
 
-// Database types
+// Sécurité : arrêt si une variable est manquante
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Supabase URL and Key must be set in environment variables.')
+}
+
+// Création du client Supabase en fonction du contexte
+export const supabase = isServer
+  ? createServerClient(supabaseUrl, supabaseAnonKey)
+  : createBrowserClient(supabaseUrl, supabaseAnonKey)
+
+
+// ==============================
+// Types de la base de données
+// ==============================
+
 export interface Profile {
   id: string;
   user_id: string;
