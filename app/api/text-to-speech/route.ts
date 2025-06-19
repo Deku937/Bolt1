@@ -7,12 +7,20 @@ export async function POST(request: NextRequest) {
   try {
     const { text, voice, speed, language, stability, similarityBoost } = await request.json();
     
+    console.log('🎤 Requête TTS reçue:', { 
+      textLength: text?.length, 
+      voice, 
+      speed, 
+      language,
+      hasApiKey: !!ELEVENLABS_API_KEY 
+    });
+    
     if (!text) {
       return NextResponse.json({ error: 'Texte requis' }, { status: 400 });
     }
 
     if (!ELEVENLABS_API_KEY) {
-      console.warn('Clé API ElevenLabs manquante, utilisation du fallback Web Speech');
+      console.warn('⚠️ Clé API ElevenLabs manquante, utilisation du fallback Web Speech');
       return NextResponse.json({ 
         useWebSpeech: true,
         text: text,
@@ -25,6 +33,13 @@ export async function POST(request: NextRequest) {
     const speechSpeed = speed || 1.0;
     const voiceStability = stability || 0.75;
     const voiceSimilarityBoost = similarityBoost || 0.85;
+
+    console.log('🔧 Paramètres ElevenLabs:', {
+      voiceId,
+      speechSpeed,
+      voiceStability,
+      voiceSimilarityBoost
+    });
 
     // Appeler l'API ElevenLabs avec des paramètres optimisés
     const response = await fetch(`${ELEVENLABS_API_URL}/text-to-speech/${voiceId}`, {
@@ -50,9 +65,11 @@ export async function POST(request: NextRequest) {
       }),
     });
 
+    console.log('📡 Réponse ElevenLabs:', response.status, response.statusText);
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Erreur API ElevenLabs: ${response.status} - ${errorText}`);
+      console.error(`❌ Erreur API ElevenLabs: ${response.status} - ${errorText}`);
       
       // Fallback vers Web Speech API en cas d'erreur
       return NextResponse.json({ 
@@ -60,12 +77,15 @@ export async function POST(request: NextRequest) {
         text: text,
         success: false,
         fallback: true,
-        message: 'Erreur API ElevenLabs, utilisation du fallback navigateur'
+        message: 'Erreur API ElevenLabs, utilisation du fallback navigateur',
+        error: `HTTP ${response.status}: ${errorText}`
       });
     }
 
     const audioBuffer = await response.arrayBuffer();
     const audioBase64 = Buffer.from(audioBuffer).toString('base64');
+
+    console.log('✅ Audio généré avec succès, taille:', audioBuffer.byteLength, 'bytes');
 
     return NextResponse.json({
       audioData: `data:audio/mpeg;base64,${audioBase64}`,
@@ -80,7 +100,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Erreur ElevenLabs TTS:', error);
+    console.error('❌ Erreur ElevenLabs TTS:', error);
     
     // Fallback vers Web Speech API
     const requestBody = await request.json().catch(() => ({}));

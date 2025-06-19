@@ -36,8 +36,8 @@ class AudioDescriptionService {
     }
   }
 
-  // Paramètres par défaut
-  private getDefaultSettings(): AudioDescriptionSettings {
+  // Paramètres par défaut - méthode publique
+  getDefaultSettings(): AudioDescriptionSettings {
     return {
       enabled: false,
       voice: 'EXAVITQu4vr4xnSDxMaL', // Bella voice (voix féminine claire)
@@ -174,6 +174,7 @@ class AudioDescriptionService {
 
     try {
       this.isPlaying = true;
+      console.log('🔊 Tentative de synthèse vocale:', text.substring(0, 50) + '...');
       
       // Essayer ElevenLabs d'abord
       const response = await fetch('/api/text-to-speech', {
@@ -197,19 +198,26 @@ class AudioDescriptionService {
       }
 
       const data = await response.json();
+      console.log('📡 Réponse API:', { success: data.success, provider: data.provider, useWebSpeech: data.useWebSpeech });
 
       if (data.audioData && !data.useWebSpeech) {
         // Utiliser l'audio ElevenLabs
+        console.log('🎵 Utilisation d\'ElevenLabs');
         const audio = new Audio(data.audioData);
         this.currentAudio = audio;
         
+        audio.onloadstart = () => console.log('🔄 Chargement audio...');
+        audio.oncanplay = () => console.log('✅ Audio prêt à jouer');
+        audio.onplay = () => console.log('▶️ Lecture audio démarrée');
+        
         audio.onended = () => {
+          console.log('⏹️ Lecture audio terminée');
           this.isPlaying = false;
           this.currentAudio = null;
         };
         
         audio.onerror = (error) => {
-          console.error('Erreur de lecture audio:', error);
+          console.error('❌ Erreur de lecture audio:', error);
           this.isPlaying = false;
           this.currentAudio = null;
           // Fallback vers Web Speech API
@@ -219,16 +227,17 @@ class AudioDescriptionService {
         await audio.play();
       } else {
         // Fallback vers Web Speech API
+        console.log('🗣️ Fallback vers Web Speech API');
         this.fallbackToWebSpeech(text, settings);
       }
       
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        console.log('Requête audio annulée');
+        console.log('🚫 Requête audio annulée');
         return;
       }
       
-      console.error('Erreur audio description:', error);
+      console.error('❌ Erreur audio description:', error);
       this.isPlaying = false;
       this.fallbackToWebSpeech(text, settings);
     }
@@ -236,6 +245,8 @@ class AudioDescriptionService {
 
   // Fallback vers Web Speech API
   private fallbackToWebSpeech(text: string, settings: AudioDescriptionSettings): void {
+    console.log('🗣️ Utilisation de Web Speech API');
+    
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text);
       
@@ -247,36 +258,50 @@ class AudioDescriptionService {
       
       // Essayer de trouver une voix appropriée
       const voices = window.speechSynthesis.getVoices();
+      console.log('🎤 Voix disponibles:', voices.length);
+      
       const preferredVoice = voices.find(voice => 
-        voice.lang.startsWith(settings.language) && voice.name.includes('Female')
+        voice.lang.startsWith(settings.language) && voice.name.toLowerCase().includes('female')
       ) || voices.find(voice => voice.lang.startsWith(settings.language));
       
       if (preferredVoice) {
         utterance.voice = preferredVoice;
+        console.log('🎤 Voix sélectionnée:', preferredVoice.name);
       }
       
       utterance.onstart = () => {
+        console.log('▶️ Web Speech démarré');
         this.isPlaying = true;
       };
       
       utterance.onend = () => {
+        console.log('⏹️ Web Speech terminé');
         this.isPlaying = false;
       };
       
       utterance.onerror = (error) => {
-        console.error('Erreur Web Speech API:', error);
+        console.error('❌ Erreur Web Speech API:', error);
         this.isPlaying = false;
       };
       
-      window.speechSynthesis.speak(utterance);
+      // S'assurer que les voix sont chargées
+      if (voices.length === 0) {
+        window.speechSynthesis.onvoiceschanged = () => {
+          window.speechSynthesis.speak(utterance);
+        };
+      } else {
+        window.speechSynthesis.speak(utterance);
+      }
     } else {
       this.isPlaying = false;
-      console.warn('Web Speech API non supportée');
+      console.warn('⚠️ Web Speech API non supportée');
     }
   }
 
   // Arrêter l'audio actuel
   stop(): void {
+    console.log('🛑 Arrêt de l\'audio description');
+    
     // Annuler les requêtes en cours
     if (this.abortController) {
       this.abortController.abort();
@@ -305,7 +330,7 @@ class AudioDescriptionService {
   // Décrire automatiquement le contenu de la page
   async describePageContent(): Promise<void> {
     const settings = this.getSettings();
-    if (!settings.enabled || !settings.autoDescribe) return;
+    if (!settings.enabled) return;
 
     const descriptions = this.getDescriptionTemplates(settings.language);
     
@@ -379,17 +404,22 @@ class AudioDescriptionService {
       const response = await fetch('/api/elevenlabs-voices');
       if (response.ok) {
         const data = await response.json();
-        return data.voices || [];
+        return data.voices || this.getDefaultVoices();
       }
     } catch (error) {
       console.error('Erreur lors de la récupération des voix:', error);
     }
     
-    // Voix par défaut si l'API échoue
+    return this.getDefaultVoices();
+  }
+
+  // Voix par défaut si l'API échoue
+  private getDefaultVoices(): Array<{id: string, name: string, category: string}> {
     return [
       { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella', category: 'premade' },
       { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni', category: 'premade' },
       { id: 'VR6AewLTigWG4xSOukaG', name: 'Arnold', category: 'premade' },
+      { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam', category: 'premade' },
     ];
   }
 }

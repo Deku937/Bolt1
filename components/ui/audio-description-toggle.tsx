@@ -2,242 +2,260 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Volume2, VolumeX, Settings, Play, Square } from 'lucide-react';
+import { audioDescriptionService } from '@/lib/audio-description';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Volume2, VolumeX, Settings, Play, Square } from 'lucide-react';
-import { audioDescriptionService, AudioDescriptionSettings } from '@/lib/audio-description';
 import { toast } from 'sonner';
 
 export function AudioDescriptionToggle() {
-  const [settings, setSettings] = useState<AudioDescriptionSettings>(
-    audioDescriptionService.getDefaultSettings()
-  );
+  const [settings, setSettings] = useState(audioDescriptionService.getDefaultSettings());
   const [isPlaying, setIsPlaying] = useState(false);
-  const [availableVoices, setAvailableVoices] = useState<Array<{id: string, name: string, category: string, language?: string, gender?: string}>>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isLoadingVoices, setIsLoadingVoices] = useState(false);
+  const [availableVoices, setAvailableVoices] = useState<Array<{id: string, name: string, category: string}>>([]);
+  const [isTestingVoice, setIsTestingVoice] = useState(false);
 
   useEffect(() => {
     // Charger les paramètres sauvegardés
     const savedSettings = audioDescriptionService.getSettings();
     setSettings(savedSettings);
-    
-    // Vérifier l'état de lecture
-    const checkPlayingState = () => {
+
+    // Charger les voix disponibles
+    loadAvailableVoices();
+
+    // Vérifier l'état de lecture périodiquement
+    const interval = setInterval(() => {
       setIsPlaying(audioDescriptionService.getIsPlaying());
-    };
-    
-    const interval = setInterval(checkPlayingState, 500);
+    }, 500);
+
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    // Charger les voix disponibles quand le dialog s'ouvre
-    if (isDialogOpen && availableVoices.length === 0) {
-      loadAvailableVoices();
-    }
-  }, [isDialogOpen]);
-
   const loadAvailableVoices = async () => {
-    setIsLoadingVoices(true);
     try {
       const voices = await audioDescriptionService.getAvailableVoices();
       setAvailableVoices(voices);
     } catch (error) {
       console.error('Erreur lors du chargement des voix:', error);
-      toast.error('Impossible de charger les voix disponibles');
-    } finally {
-      setIsLoadingVoices(false);
     }
   };
 
-  const handleToggle = () => {
+  const handleToggle = async () => {
     const newSettings = { ...settings, enabled: !settings.enabled };
     setSettings(newSettings);
     audioDescriptionService.saveSettings(newSettings);
-    
+
     if (newSettings.enabled) {
-      toast.success('Audio description activée');
-      // Décrire la page actuelle
+      toast.success('🔊 Audio description activée');
+      // Test de la voix
       setTimeout(() => {
-        audioDescriptionService.describePageContent();
+        audioDescriptionService.speak('Audio description activée. Vous pouvez maintenant naviguer avec des descriptions vocales.');
       }, 500);
     } else {
-      toast.info('Audio description désactivée');
       audioDescriptionService.stop();
+      toast.info('🔇 Audio description désactivée');
     }
   };
 
-  const handleSettingChange = (key: keyof AudioDescriptionSettings, value: any) => {
+  const handleSettingChange = (key: keyof typeof settings, value: any) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
     audioDescriptionService.saveSettings(newSettings);
   };
 
-  const handleTestVoice = async () => {
-    const testText = settings.language === 'fr' 
-      ? 'Ceci est un test de la voix sélectionnée pour l\'audio description.'
-      : 'This is a test of the selected voice for audio description.';
+  const testVoice = async () => {
+    if (isTestingVoice) return;
     
+    setIsTestingVoice(true);
     try {
+      const testText = settings.language === 'fr' 
+        ? 'Ceci est un test de la voix sélectionnée pour l\'audio description.'
+        : 'This is a test of the selected voice for audio description.';
+      
       await audioDescriptionService.speak(testText);
-      toast.success('Test de la voix en cours...');
+      toast.success('Test de voix lancé');
     } catch (error) {
-      toast.error('Erreur lors du test de la voix');
+      console.error('Erreur lors du test de voix:', error);
+      toast.error('Erreur lors du test de voix');
+    } finally {
+      setIsTestingVoice(false);
     }
   };
 
-  const handleStop = () => {
+  const stopAudio = () => {
     audioDescriptionService.stop();
     setIsPlaying(false);
   };
 
-  const getVoiceDisplayName = (voice: any) => {
-    let displayName = voice.name;
-    if (voice.language && voice.language !== 'en') {
-      displayName += ` (${voice.language.toUpperCase()})`;
+  const describeCurrentPage = async () => {
+    try {
+      await audioDescriptionService.describePageContent();
+      toast.success('Description de la page lancée');
+    } catch (error) {
+      console.error('Erreur lors de la description de page:', error);
+      toast.error('Erreur lors de la description de page');
     }
-    if (voice.gender) {
-      displayName += ` - ${voice.gender === 'female' ? '♀' : '♂'}`;
-    }
-    return displayName;
   };
 
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-      <DialogTrigger asChild>
+    <div className="flex items-center gap-2">
+      {/* Bouton principal toggle */}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={handleToggle}
+        className={`relative transition-all duration-200 ${
+          settings.enabled 
+            ? 'text-primary hover:text-primary/80 bg-primary/10' 
+            : 'text-muted-foreground hover:text-foreground'
+        }`}
+        aria-label={settings.enabled ? 'Désactiver audio description' : 'Activer audio description'}
+        title={settings.enabled ? 'Audio description activée' : 'Audio description désactivée'}
+      >
+        {settings.enabled ? (
+          <Volume2 className="w-4 h-4" />
+        ) : (
+          <VolumeX className="w-4 h-4" />
+        )}
+        
+        {/* Indicateur d'état */}
+        {settings.enabled && (
+          <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+        )}
+      </Button>
+
+      {/* Bouton stop si en cours de lecture */}
+      {isPlaying && (
         <Button
           variant="ghost"
           size="icon"
-          className="relative hover:bg-white/10"
-          aria-label={settings.enabled ? 'Audio description activée - Cliquer pour configurer' : 'Audio description désactivée - Cliquer pour activer'}
-          title={settings.enabled ? 'Configurer l\'audio description' : 'Activer l\'audio description'}
+          onClick={stopAudio}
+          className="text-red-500 hover:text-red-600 bg-red-50 hover:bg-red-100"
+          aria-label="Arrêter la lecture audio"
+          title="Arrêter la lecture"
         >
-          {settings.enabled ? (
-            <Volume2 className="w-4 h-4 text-primary" />
-          ) : (
-            <VolumeX className="w-4 h-4" />
-          )}
-          {settings.enabled && (
-            <div className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-          )}
+          <Square className="w-4 h-4" />
         </Button>
-      </DialogTrigger>
-      
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Volume2 className="w-5 h-5 text-primary" />
-            Audio Description
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="space-y-6">
-          {/* Activation principale */}
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="enable-audio" className="text-base font-medium">
-                Activer l'audio description
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Descriptions vocales des éléments de l'interface
-              </p>
-            </div>
-            <Switch
-              id="enable-audio"
-              checked={settings.enabled}
-              onCheckedChange={handleToggle}
-            />
-          </div>
+      )}
 
-          {settings.enabled && (
-            <>
-              {/* Sélection de la voix */}
-              <div className="space-y-2">
-                <Label>Voix</Label>
-                <div className="flex gap-2">
+      {/* Bouton paramètres */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Paramètres audio description"
+            title="Configurer l'audio description"
+          >
+            <Settings className="w-4 h-4" />
+          </Button>
+        </DialogTrigger>
+        
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Volume2 className="w-5 h-5 text-primary" />
+              Paramètres Audio Description
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Activation */}
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="enabled">Activer l'audio description</Label>
+                <p className="text-xs text-muted-foreground">Descriptions vocales des éléments de l'interface</p>
+              </div>
+              <Switch
+                id="enabled"
+                checked={settings.enabled}
+                onCheckedChange={(checked) => handleSettingChange('enabled', checked)}
+              />
+            </div>
+
+            {settings.enabled && (
+              <>
+                {/* Auto-description */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="autoDescribe">Description automatique</Label>
+                    <p className="text-xs text-muted-foreground">Décrire automatiquement au survol</p>
+                  </div>
+                  <Switch
+                    id="autoDescribe"
+                    checked={settings.autoDescribe}
+                    onCheckedChange={(checked) => handleSettingChange('autoDescribe', checked)}
+                  />
+                </div>
+
+                {/* Langue */}
+                <div className="space-y-2">
+                  <Label>Langue</Label>
                   <Select
-                    value={settings.voice}
-                    onValueChange={(value) => handleSettingChange('voice', value)}
-                    disabled={isLoadingVoices}
+                    value={settings.language}
+                    onValueChange={(value) => handleSettingChange('language', value)}
                   >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder={isLoadingVoices ? "Chargement..." : "Sélectionner une voix"} />
+                    <SelectTrigger>
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableVoices.map((voice) => (
-                        <SelectItem key={voice.id} value={voice.id}>
-                          {getVoiceDisplayName(voice)}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="fr">Français</SelectItem>
+                      <SelectItem value="en">English</SelectItem>
                     </SelectContent>
                   </Select>
-                  
-                  {isPlaying ? (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={handleStop}
-                      title="Arrêter la lecture"
+                </div>
+
+                {/* Voix */}
+                <div className="space-y-2">
+                  <Label>Voix</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={settings.voice}
+                      onValueChange={(value) => handleSettingChange('voice', value)}
                     >
-                      <Square className="w-4 h-4" />
-                    </Button>
-                  ) : (
+                      <SelectTrigger className="flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableVoices.map((voice) => (
+                          <SelectItem key={voice.id} value={voice.id}>
+                            {voice.name} ({voice.category})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={handleTestVoice}
+                      onClick={testVoice}
+                      disabled={isTestingVoice}
                       title="Tester la voix"
                     >
                       <Play className="w-4 h-4" />
                     </Button>
-                  )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Langue */}
-              <div className="space-y-2">
-                <Label>Langue</Label>
-                <Select
-                  value={settings.language}
-                  onValueChange={(value) => handleSettingChange('language', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="fr">Français</SelectItem>
-                    <SelectItem value="en">English</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Vitesse de lecture */}
-              <div className="space-y-2">
-                <Label>Vitesse de lecture: {settings.speed.toFixed(1)}x</Label>
-                <Slider
-                  value={[settings.speed]}
-                  onValueChange={([value]) => handleSettingChange('speed', value)}
-                  min={0.5}
-                  max={2.0}
-                  step={0.1}
-                  className="w-full"
-                />
-              </div>
-
-              {/* Paramètres avancés */}
-              <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                <h4 className="text-sm font-medium flex items-center gap-2">
-                  <Settings className="w-4 h-4" />
-                  Paramètres avancés
-                </h4>
-                
-                {/* Stabilité de la voix */}
+                {/* Vitesse */}
                 <div className="space-y-2">
-                  <Label className="text-xs">Stabilité: {(settings.stability * 100).toFixed(0)}%</Label>
+                  <Label>Vitesse de lecture: {settings.speed.toFixed(1)}x</Label>
+                  <Slider
+                    value={[settings.speed]}
+                    onValueChange={([value]) => handleSettingChange('speed', value)}
+                    min={0.5}
+                    max={2.0}
+                    step={0.1}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Stabilité */}
+                <div className="space-y-2">
+                  <Label>Stabilité de la voix: {Math.round(settings.stability * 100)}%</Label>
                   <Slider
                     value={[settings.stability]}
                     onValueChange={([value]) => handleSettingChange('stability', value)}
@@ -250,7 +268,7 @@ export function AudioDescriptionToggle() {
 
                 {/* Similarité */}
                 <div className="space-y-2">
-                  <Label className="text-xs">Clarté: {(settings.similarityBoost * 100).toFixed(0)}%</Label>
+                  <Label>Clarté de la voix: {Math.round(settings.similarityBoost * 100)}%</Label>
                   <Slider
                     value={[settings.similarityBoost]}
                     onValueChange={([value]) => handleSettingChange('similarityBoost', value)}
@@ -261,34 +279,48 @@ export function AudioDescriptionToggle() {
                   />
                 </div>
 
-                {/* Description automatique */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-xs font-medium">Description automatique</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Décrire automatiquement les pages
-                    </p>
+                {/* Actions de test */}
+                <div className="space-y-2">
+                  <Label>Actions de test</Label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={testVoice}
+                      disabled={isTestingVoice}
+                      className="flex-1"
+                    >
+                      <Play className="w-4 h-4 mr-2" />
+                      Test voix
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={describeCurrentPage}
+                      className="flex-1"
+                    >
+                      <Volume2 className="w-4 h-4 mr-2" />
+                      Décrire page
+                    </Button>
                   </div>
-                  <Switch
-                    checked={settings.autoDescribe}
-                    onCheckedChange={(checked) => handleSettingChange('autoDescribe', checked)}
-                  />
                 </div>
-              </div>
 
-              {/* Raccourcis clavier */}
-              <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-                <h4 className="text-sm font-medium mb-2">Raccourcis clavier</h4>
-                <div className="text-xs text-muted-foreground space-y-1">
-                  <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Tab</kbd> : Naviguer entre les éléments</p>
-                  <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Entrée</kbd> : Activer un élément</p>
-                  <p>• <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Échap</kbd> : Arrêter la lecture</p>
+                {/* Informations */}
+                <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                    💡 Raccourcis clavier
+                  </h4>
+                  <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                    <li>• <kbd>Tab</kbd> : Naviguer entre les éléments</li>
+                    <li>• <kbd>Échap</kbd> : Arrêter la lecture audio</li>
+                    <li>• <kbd>Entrée</kbd> : Activer l'élément focalisé</li>
+                  </ul>
                 </div>
-              </div>
-            </>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
