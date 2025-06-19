@@ -7,41 +7,42 @@ export async function POST(request: NextRequest) {
   try {
     const { text, voice, speed, language, stability, similarityBoost } = await request.json();
     
-    console.log('🎤 Requête TTS reçue:', { 
+    console.log('🎤 TTS Request received:', { 
       textLength: text?.length, 
       voice, 
       speed, 
-      language,
+      language: 'en', // Force English
       hasApiKey: !!ELEVENLABS_API_KEY 
     });
     
     if (!text) {
-      return NextResponse.json({ error: 'Texte requis' }, { status: 400 });
+      return NextResponse.json({ error: 'Text required' }, { status: 400 });
     }
 
     if (!ELEVENLABS_API_KEY) {
-      console.warn('⚠️ Clé API ElevenLabs manquante, utilisation du fallback Web Speech');
+      console.warn('⚠️ ElevenLabs API key missing, using Web Speech fallback');
       return NextResponse.json({ 
         useWebSpeech: true,
         text: text,
-        message: 'Utilisation de la synthèse vocale du navigateur'
+        message: 'Using browser speech synthesis'
       });
     }
 
-    // Utiliser la voix fournie ou une voix par défaut
+    // Use provided voice or default
     const voiceId = voice || 'EXAVITQu4vr4xnSDxMaL'; // Bella voice
     const speechSpeed = speed || 1.0;
     const voiceStability = stability || 0.75;
     const voiceSimilarityBoost = similarityBoost || 0.85;
 
-    console.log('🔧 Paramètres ElevenLabs:', {
+    console.log('🔧 ElevenLabs settings:', {
       voiceId,
       speechSpeed,
       voiceStability,
-      voiceSimilarityBoost
+      voiceSimilarityBoost,
+      language: 'en'
     });
 
-    // Appeler l'API ElevenLabs avec des paramètres optimisés
+    // Call ElevenLabs API with optimized settings for English
     const response = await fetch(`${ELEVENLABS_API_URL}/text-to-speech/${voiceId}`, {
       method: 'POST',
       headers: {
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         text: text,
-        model_id: 'eleven_turbo_v2', // Modèle plus rapide pour les descriptions audio
+        model_id: 'eleven_turbo_v2', // Faster model for audio descriptions
         voice_settings: {
           stability: voiceStability,
           similarity_boost: voiceSimilarityBoost,
@@ -59,25 +60,25 @@ export async function POST(request: NextRequest) {
           use_speaker_boost: true,
           speaking_rate: speechSpeed,
         },
-        // Paramètres additionnels pour l'optimisation
-        optimize_streaming_latency: 3, // Optimisation pour la latence
-        output_format: 'mp3_44100_128', // Format optimisé
+        // Additional parameters for optimization
+        optimize_streaming_latency: 3, // Latency optimization
+        output_format: 'mp3_44100_128', // Optimized format
       }),
     });
 
-    console.log('📡 Réponse ElevenLabs:', response.status, response.statusText);
+    console.log('📡 ElevenLabs response:', response.status, response.statusText);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`❌ Erreur API ElevenLabs: ${response.status} - ${errorText}`);
+      console.error(`❌ ElevenLabs API error: ${response.status} - ${errorText}`);
       
-      // Fallback vers Web Speech API en cas d'erreur
+      // Fallback to Web Speech API on error
       return NextResponse.json({ 
         useWebSpeech: true,
         text: text,
         success: false,
         fallback: true,
-        message: 'Erreur API ElevenLabs, utilisation du fallback navigateur',
+        message: 'ElevenLabs API error, using browser fallback',
         error: `HTTP ${response.status}: ${errorText}`
       });
     }
@@ -85,13 +86,14 @@ export async function POST(request: NextRequest) {
     const audioBuffer = await response.arrayBuffer();
     const audioBase64 = Buffer.from(audioBuffer).toString('base64');
 
-    console.log('✅ Audio généré avec succès, taille:', audioBuffer.byteLength, 'bytes');
+    console.log('✅ Audio generated successfully, size:', audioBuffer.byteLength, 'bytes');
 
     return NextResponse.json({
       audioData: `data:audio/mpeg;base64,${audioBase64}`,
       success: true,
       provider: 'elevenlabs',
       voiceId: voiceId,
+      language: 'en',
       settings: {
         speed: speechSpeed,
         stability: voiceStability,
@@ -100,9 +102,9 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('❌ Erreur ElevenLabs TTS:', error);
+    console.error('❌ ElevenLabs TTS error:', error);
     
-    // Fallback vers Web Speech API
+    // Fallback to Web Speech API
     const requestBody = await request.json().catch(() => ({}));
     return NextResponse.json({ 
       useWebSpeech: true,
@@ -110,7 +112,7 @@ export async function POST(request: NextRequest) {
       success: false,
       fallback: true,
       error: error.message,
-      message: 'Erreur serveur, utilisation de la synthèse vocale du navigateur'
+      message: 'Server error, using browser speech synthesis'
     });
   }
 }

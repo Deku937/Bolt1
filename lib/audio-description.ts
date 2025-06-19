@@ -1,4 +1,4 @@
-// Service d'audio description utilisant l'API ElevenLabs
+// Audio description service using ElevenLabs API
 export interface AudioDescriptionSettings {
   enabled: boolean;
   voice: string;
@@ -15,7 +15,7 @@ class AudioDescriptionService {
   private isPlaying = false;
   private abortController: AbortController | null = null;
 
-  // Obtenir les paramètres d'audio description de l'utilisateur
+  // Get user's audio description settings
   getSettings(): AudioDescriptionSettings {
     if (typeof window === 'undefined') {
       return this.getDefaultSettings();
@@ -23,33 +23,38 @@ class AudioDescriptionService {
     
     try {
       const data = localStorage.getItem(this.storageKey);
-      return data ? { ...this.getDefaultSettings(), ...JSON.parse(data) } : this.getDefaultSettings();
+      const settings = data ? { ...this.getDefaultSettings(), ...JSON.parse(data) } : this.getDefaultSettings();
+      // Force English language
+      settings.language = 'en';
+      return settings;
     } catch {
       return this.getDefaultSettings();
     }
   }
 
-  // Sauvegarder les paramètres d'audio description
+  // Save audio description settings
   saveSettings(settings: AudioDescriptionSettings): void {
     if (typeof window !== 'undefined') {
-      localStorage.setItem(this.storageKey, JSON.stringify(settings));
+      // Force English language before saving
+      const settingsToSave = { ...settings, language: 'en' };
+      localStorage.setItem(this.storageKey, JSON.stringify(settingsToSave));
     }
   }
 
-  // Paramètres par défaut - méthode publique
+  // Default settings - public method
   getDefaultSettings(): AudioDescriptionSettings {
     return {
       enabled: false,
-      voice: 'EXAVITQu4vr4xnSDxMaL', // Bella voice (voix féminine claire)
+      voice: 'EXAVITQu4vr4xnSDxMaL', // Bella voice (clear female voice)
       speed: 1.0,
       autoDescribe: false,
-      language: 'fr', // Français par défaut
+      language: 'en', // Always English
       stability: 0.75,
       similarityBoost: 0.85,
     };
   }
 
-  // Générer une description audio pour les éléments UI
+  // Generate audio description for UI elements
   async describeElement(element: HTMLElement, customText?: string): Promise<void> {
     const settings = this.getSettings();
     if (!settings.enabled) return;
@@ -57,7 +62,7 @@ class AudioDescriptionService {
     let description = customText;
     
     if (!description) {
-      description = this.generateElementDescription(element, settings.language);
+      description = this.generateElementDescription(element);
     }
 
     if (description) {
@@ -65,99 +70,57 @@ class AudioDescriptionService {
     }
   }
 
-  // Générer le texte de description pour un élément
-  private generateElementDescription(element: HTMLElement, language: string): string {
+  // Generate description text for an element
+  private generateElementDescription(element: HTMLElement): string {
     const tagName = element.tagName.toLowerCase();
     const role = element.getAttribute('role');
     const ariaLabel = element.getAttribute('aria-label');
     const title = element.getAttribute('title');
     const textContent = element.textContent?.trim();
 
-    // Utiliser aria-label ou title si disponible
+    // Use aria-label or title if available
     if (ariaLabel) return ariaLabel;
     if (title) return title;
 
-    // Générer la description basée sur le type d'élément et la langue
-    const descriptions = this.getDescriptionTemplates(language);
-
+    // Generate description based on element type (always in English)
     switch (tagName) {
       case 'button':
-        return `${descriptions.button}: ${textContent || descriptions.unlabeledButton}`;
+        return `Button: ${textContent || 'unlabeled button'}`;
       case 'input':
         const inputType = element.getAttribute('type') || 'text';
         const placeholder = element.getAttribute('placeholder');
-        return `${descriptions.input} ${inputType}${placeholder ? `: ${placeholder}` : ''}`;
+        return `${inputType} input${placeholder ? `: ${placeholder}` : ''}`;
       case 'a':
-        return `${descriptions.link}: ${textContent || descriptions.unlabeledLink}`;
+        return `Link: ${textContent || 'unlabeled link'}`;
       case 'h1':
       case 'h2':
       case 'h3':
       case 'h4':
       case 'h5':
       case 'h6':
-        return `${descriptions.heading} ${tagName.charAt(1)}: ${textContent}`;
+        return `Heading level ${tagName.charAt(1)}: ${textContent}`;
       case 'img':
         const alt = element.getAttribute('alt');
-        return `${descriptions.image}: ${alt || descriptions.noDescription}`;
+        return `Image: ${alt || 'no description available'}`;
       case 'nav':
-        return descriptions.navigation;
+        return 'Navigation menu';
       case 'main':
-        return descriptions.mainContent;
+        return 'Main content area';
       case 'aside':
-        return descriptions.sidebar;
+        return 'Sidebar content';
       case 'footer':
-        return descriptions.footer;
+        return 'Footer content';
       case 'header':
-        return descriptions.header;
+        return 'Header content';
       default:
         if (role) {
-          return `${role}: ${textContent || descriptions.interactiveElement}`;
+          return `${role}: ${textContent || 'interactive element'}`;
         }
-        return textContent || descriptions.interactiveElement;
+        return textContent || 'Interactive element';
     }
   }
 
-  // Templates de description multilingues
-  private getDescriptionTemplates(language: string) {
-    const templates = {
-      fr: {
-        button: 'Bouton',
-        unlabeledButton: 'bouton sans étiquette',
-        input: 'Champ de saisie',
-        link: 'Lien',
-        unlabeledLink: 'lien sans étiquette',
-        heading: 'Titre de niveau',
-        image: 'Image',
-        noDescription: 'aucune description disponible',
-        navigation: 'Menu de navigation',
-        mainContent: 'Contenu principal',
-        sidebar: 'Barre latérale',
-        footer: 'Pied de page',
-        header: 'En-tête',
-        interactiveElement: 'élément interactif',
-      },
-      en: {
-        button: 'Button',
-        unlabeledButton: 'unlabeled button',
-        input: 'Input field',
-        link: 'Link',
-        unlabeledLink: 'unlabeled link',
-        heading: 'Heading level',
-        image: 'Image',
-        noDescription: 'no description available',
-        navigation: 'Navigation menu',
-        mainContent: 'Main content area',
-        sidebar: 'Sidebar content',
-        footer: 'Footer content',
-        header: 'Header content',
-        interactiveElement: 'interactive element',
-      }
-    };
-
-    return templates[language as keyof typeof templates] || templates.en;
-  }
-
-  // Parler le texte en utilisant ElevenLabs ou fallback vers Web Speech API
+  // Speak text using ElevenLabs or fallback to Web Speech API
   async speak(text: string): Promise<void> {
     if (this.isPlaying) {
       this.stop();
@@ -166,7 +129,7 @@ class AudioDescriptionService {
     const settings = this.getSettings();
     if (!settings.enabled) return;
 
-    // Annuler toute requête précédente
+    // Cancel any previous request
     if (this.abortController) {
       this.abortController.abort();
     }
@@ -174,9 +137,9 @@ class AudioDescriptionService {
 
     try {
       this.isPlaying = true;
-      console.log('🔊 Tentative de synthèse vocale:', text.substring(0, 50) + '...');
+      console.log('🔊 Attempting speech synthesis:', text.substring(0, 50) + '...');
       
-      // Essayer ElevenLabs d'abord
+      // Try ElevenLabs first
       const response = await fetch('/api/text-to-speech', {
         method: 'POST',
         headers: {
@@ -186,7 +149,7 @@ class AudioDescriptionService {
           text,
           voice: settings.voice,
           speed: settings.speed,
-          language: settings.language,
+          language: 'en', // Force English
           stability: settings.stability,
           similarityBoost: settings.similarityBoost,
         }),
@@ -198,93 +161,93 @@ class AudioDescriptionService {
       }
 
       const data = await response.json();
-      console.log('📡 Réponse API:', { success: data.success, provider: data.provider, useWebSpeech: data.useWebSpeech });
+      console.log('📡 API Response:', { success: data.success, provider: data.provider, useWebSpeech: data.useWebSpeech });
 
       if (data.audioData && !data.useWebSpeech) {
-        // Utiliser l'audio ElevenLabs
-        console.log('🎵 Utilisation d\'ElevenLabs');
+        // Use ElevenLabs audio
+        console.log('🎵 Using ElevenLabs');
         const audio = new Audio(data.audioData);
         this.currentAudio = audio;
         
-        audio.onloadstart = () => console.log('🔄 Chargement audio...');
-        audio.oncanplay = () => console.log('✅ Audio prêt à jouer');
-        audio.onplay = () => console.log('▶️ Lecture audio démarrée');
+        audio.onloadstart = () => console.log('🔄 Loading audio...');
+        audio.oncanplay = () => console.log('✅ Audio ready to play');
+        audio.onplay = () => console.log('▶️ Audio playback started');
         
         audio.onended = () => {
-          console.log('⏹️ Lecture audio terminée');
+          console.log('⏹️ Audio playback ended');
           this.isPlaying = false;
           this.currentAudio = null;
         };
         
         audio.onerror = (error) => {
-          console.error('❌ Erreur de lecture audio:', error);
+          console.error('❌ Audio playback error:', error);
           this.isPlaying = false;
           this.currentAudio = null;
-          // Fallback vers Web Speech API
-          this.fallbackToWebSpeech(text, settings);
+          // Fallback to Web Speech API
+          this.fallbackToWebSpeech(text);
         };
         
         await audio.play();
       } else {
-        // Fallback vers Web Speech API
-        console.log('🗣️ Fallback vers Web Speech API');
-        this.fallbackToWebSpeech(text, settings);
+        // Fallback to Web Speech API
+        console.log('🗣️ Fallback to Web Speech API');
+        this.fallbackToWebSpeech(text);
       }
       
     } catch (error: any) {
       if (error.name === 'AbortError') {
-        console.log('🚫 Requête audio annulée');
+        console.log('🚫 Audio request cancelled');
         return;
       }
       
-      console.error('❌ Erreur audio description:', error);
+      console.error('❌ Audio description error:', error);
       this.isPlaying = false;
-      this.fallbackToWebSpeech(text, settings);
+      this.fallbackToWebSpeech(text);
     }
   }
 
-  // Fallback vers Web Speech API
-  private fallbackToWebSpeech(text: string, settings: AudioDescriptionSettings): void {
-    console.log('🗣️ Utilisation de Web Speech API');
+  // Fallback to Web Speech API
+  private fallbackToWebSpeech(text: string): void {
+    console.log('🗣️ Using Web Speech API');
     
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text);
       
-      // Configuration de la voix
-      utterance.lang = settings.language === 'fr' ? 'fr-FR' : 'en-US';
-      utterance.rate = settings.speed;
+      // Configure voice for English
+      utterance.lang = 'en-US';
+      utterance.rate = this.getSettings().speed;
       utterance.pitch = 1;
       utterance.volume = 0.8;
       
-      // Essayer de trouver une voix appropriée
+      // Try to find an appropriate English voice
       const voices = window.speechSynthesis.getVoices();
-      console.log('🎤 Voix disponibles:', voices.length);
+      console.log('🎤 Available voices:', voices.length);
       
       const preferredVoice = voices.find(voice => 
-        voice.lang.startsWith(settings.language) && voice.name.toLowerCase().includes('female')
-      ) || voices.find(voice => voice.lang.startsWith(settings.language));
+        voice.lang.startsWith('en') && voice.name.toLowerCase().includes('female')
+      ) || voices.find(voice => voice.lang.startsWith('en'));
       
       if (preferredVoice) {
         utterance.voice = preferredVoice;
-        console.log('🎤 Voix sélectionnée:', preferredVoice.name);
+        console.log('🎤 Selected voice:', preferredVoice.name);
       }
       
       utterance.onstart = () => {
-        console.log('▶️ Web Speech démarré');
+        console.log('▶️ Web Speech started');
         this.isPlaying = true;
       };
       
       utterance.onend = () => {
-        console.log('⏹️ Web Speech terminé');
+        console.log('⏹️ Web Speech ended');
         this.isPlaying = false;
       };
       
       utterance.onerror = (error) => {
-        console.error('❌ Erreur Web Speech API:', error);
+        console.error('❌ Web Speech API error:', error);
         this.isPlaying = false;
       };
       
-      // S'assurer que les voix sont chargées
+      // Ensure voices are loaded
       if (voices.length === 0) {
         window.speechSynthesis.onvoiceschanged = () => {
           window.speechSynthesis.speak(utterance);
@@ -294,27 +257,27 @@ class AudioDescriptionService {
       }
     } else {
       this.isPlaying = false;
-      console.warn('⚠️ Web Speech API non supportée');
+      console.warn('⚠️ Web Speech API not supported');
     }
   }
 
-  // Arrêter l'audio actuel
+  // Stop current audio
   stop(): void {
-    console.log('🛑 Arrêt de l\'audio description');
+    console.log('🛑 Stopping audio description');
     
-    // Annuler les requêtes en cours
+    // Cancel ongoing requests
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;
     }
 
-    // Arrêter l'audio ElevenLabs
+    // Stop ElevenLabs audio
     if (this.currentAudio) {
       this.currentAudio.pause();
       this.currentAudio = null;
     }
     
-    // Arrêter Web Speech API
+    // Stop Web Speech API
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
@@ -322,52 +285,43 @@ class AudioDescriptionService {
     this.isPlaying = false;
   }
 
-  // Vérifier si en cours de lecture
+  // Check if currently playing
   getIsPlaying(): boolean {
     return this.isPlaying;
   }
 
-  // Décrire automatiquement le contenu de la page
+  // Describe page content automatically
   async describePageContent(): Promise<void> {
     const settings = this.getSettings();
     if (!settings.enabled) return;
-
-    const descriptions = this.getDescriptionTemplates(settings.language);
     
-    // Obtenir les zones de contenu principales
+    // Get main content areas
     const main = document.querySelector('main');
     const headings = document.querySelectorAll('h1, h2, h3');
     
-    let description = settings.language === 'fr' ? 'Page chargée. ' : 'Page loaded. ';
+    let description = 'Page loaded. ';
     
-    // Décrire le titre principal
+    // Describe main heading
     const mainHeading = headings[0];
     if (mainHeading) {
-      const headingText = settings.language === 'fr' ? 'Titre principal' : 'Main heading';
-      description += `${headingText}: ${mainHeading.textContent}. `;
+      description += `Main heading: ${mainHeading.textContent}. `;
     }
     
-    // Compter les éléments interactifs
+    // Count interactive elements
     const buttons = document.querySelectorAll('button').length;
     const links = document.querySelectorAll('a').length;
     const inputs = document.querySelectorAll('input, select, textarea').length;
     
-    if (settings.language === 'fr') {
-      if (buttons > 0) description += `${buttons} bouton${buttons > 1 ? 's' : ''} disponible${buttons > 1 ? 's' : ''}. `;
-      if (links > 0) description += `${links} lien${links > 1 ? 's' : ''} disponible${links > 1 ? 's' : ''}. `;
-      if (inputs > 0) description += `${inputs} champ${inputs > 1 ? 's' : ''} de formulaire disponible${inputs > 1 ? 's' : ''}. `;
-      description += 'Utilisez Tab pour naviguer, Entrée pour activer, ou activez la description automatique pour une navigation détaillée.';
-    } else {
-      if (buttons > 0) description += `${buttons} button${buttons > 1 ? 's' : ''} available. `;
-      if (links > 0) description += `${links} link${links > 1 ? 's' : ''} available. `;
-      if (inputs > 0) description += `${inputs} form control${inputs > 1 ? 's' : ''} available. `;
-      description += 'Use Tab to navigate, Enter to activate, or enable auto-describe for detailed navigation.';
-    }
+    if (buttons > 0) description += `${buttons} button${buttons > 1 ? 's' : ''} available. `;
+    if (links > 0) description += `${links} link${links > 1 ? 's' : ''} available. `;
+    if (inputs > 0) description += `${inputs} form control${inputs > 1 ? 's' : ''} available. `;
+    
+    description += 'Use Tab to navigate, Enter to activate, or enable auto-describe for detailed navigation.';
     
     await this.speak(description);
   }
 
-  // Décrire la structure de navigation
+  // Describe navigation structure
   async describeNavigation(): Promise<void> {
     const settings = this.getSettings();
     if (!settings.enabled) return;
@@ -376,29 +330,20 @@ class AudioDescriptionService {
     let description = '';
     
     if (navElements.length === 0) {
-      description = settings.language === 'fr' 
-        ? 'Aucun menu de navigation trouvé sur cette page.'
-        : 'No navigation menus found on this page.';
+      description = 'No navigation menus found on this page.';
     } else {
-      if (settings.language === 'fr') {
-        description = `${navElements.length} menu${navElements.length > 1 ? 's' : ''} de navigation disponible${navElements.length > 1 ? 's' : ''}. `;
-        navElements.forEach((nav, index) => {
-          const links = nav.querySelectorAll('a, button');
-          description += `Menu ${index + 1} contient ${links.length} élément${links.length > 1 ? 's' : ''}. `;
-        });
-      } else {
-        description = `${navElements.length} navigation menu${navElements.length > 1 ? 's' : ''} available. `;
-        navElements.forEach((nav, index) => {
-          const links = nav.querySelectorAll('a, button');
-          description += `Menu ${index + 1} has ${links.length} item${links.length > 1 ? 's' : ''}. `;
-        });
-      }
+      description = `${navElements.length} navigation menu${navElements.length > 1 ? 's' : ''} available. `;
+      
+      navElements.forEach((nav, index) => {
+        const links = nav.querySelectorAll('a, button');
+        description += `Menu ${index + 1} has ${links.length} item${links.length > 1 ? 's' : ''}. `;
+      });
     }
     
     await this.speak(description);
   }
 
-  // Obtenir les voix disponibles pour ElevenLabs
+  // Get available voices for ElevenLabs
   async getAvailableVoices(): Promise<Array<{id: string, name: string, category: string}>> {
     try {
       const response = await fetch('/api/elevenlabs-voices');
@@ -407,13 +352,13 @@ class AudioDescriptionService {
         return data.voices || this.getDefaultVoices();
       }
     } catch (error) {
-      console.error('Erreur lors de la récupération des voix:', error);
+      console.error('Error fetching voices:', error);
     }
     
     return this.getDefaultVoices();
   }
 
-  // Voix par défaut si l'API échoue
+  // Default voices if API fails
   private getDefaultVoices(): Array<{id: string, name: string, category: string}> {
     return [
       { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella', category: 'premade' },
