@@ -185,13 +185,6 @@ export function Chatbot() {
     sendMessage(inputValue, undefined, true);
   };
 
-  const handleQuickImageGeneration = (prompt: string) => {
-    setInputValue(prompt);
-    setTimeout(() => {
-      sendMessage(prompt, undefined, true);
-    }, 100);
-  };
-
   const downloadImage = async (imageUrl: string, imageName: string = 'mindwell-image') => {
     try {
       const response = await fetch(imageUrl);
@@ -381,14 +374,11 @@ export function Chatbot() {
     sendMessage(inputValue, selectedImage || undefined);
   };
 
-  // Reduced quick actions - only 2 quick questions
+  // Only 2 quick questions - no image generation in quick actions
   const quickQuestions = [
     "How to manage anxiety?",
     "Book a session"
   ];
-
-  // Only 1 image generation option
-  const quickImagePrompt = "Generate a peaceful forest scene";
 
   return (
     <>
@@ -437,14 +427,14 @@ export function Chatbot() {
           </CardHeader>
           
           <CardContent className="p-0 flex flex-col h-[calc(100%-80px)] md:h-[calc(100%-100px)]">
-            {/* Reduced Quick Actions */}
+            {/* Simplified Quick Actions - Only 2 questions, no image generation */}
             {messages.length === 1 && (
               <div className="p-3 border-b bg-muted/30">
                 <p className="text-xs font-medium mb-2 flex items-center gap-1">
                   <Zap className="w-3 h-3 text-primary" />
                   Quick actions:
                 </p>
-                <div className="grid grid-cols-2 gap-1 mb-3">
+                <div className="grid grid-cols-2 gap-1">
                   {quickQuestions.map((question, index) => (
                     <Button
                       key={index}
@@ -456,22 +446,6 @@ export function Chatbot() {
                       <span className="truncate">{question}</span>
                     </Button>
                   ))}
-                </div>
-                
-                <p className="text-xs font-medium mb-2 flex items-center gap-1">
-                  <Palette className="w-3 h-3 text-healing" />
-                  Generate image:
-                </p>
-                <div className="grid grid-cols-1 gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs h-8 px-2 hover:bg-healing/10 justify-start"
-                    onClick={() => handleQuickImageGeneration(quickImagePrompt)}
-                  >
-                    <Palette className="w-3 h-3 mr-1" />
-                    <span className="truncate">{quickImagePrompt}</span>
-                  </Button>
                 </div>
               </div>
             )}
