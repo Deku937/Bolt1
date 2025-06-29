@@ -8,7 +8,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { LanguageToggle } from '@/components/ui/language-toggle';
 import { AudioDescriptionToggle } from '@/components/ui/audio-description-toggle';
 import { useLanguage } from '@/providers/language-provider';
-import { Heart, Menu, X, User, LogOut, Sparkles, Bell } from 'lucide-react';
+import { Heart, Menu, X, User, LogOut, Sparkles, Zap, ExternalLink } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,25 +88,25 @@ export function Header() {
 
         {/* Desktop Actions */}
         <div className="hidden md:flex items-center gap-4">
+          {/* Bolt Badge */}
+          <a
+            href="https://bolt.new"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-500 to-blue-600 text-white text-xs font-medium hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl group"
+            aria-label="Built with Bolt - Open in new tab"
+          >
+            <Zap className="w-3 h-3 group-hover:animate-pulse" />
+            <span>Built with Bolt</span>
+            <ExternalLink className="w-3 h-3 opacity-70" />
+          </a>
+
           <AudioDescriptionToggle />
           <LanguageToggle />
           <ThemeToggle />
           
           {user ? (
             <div className="flex items-center gap-3">
-              {/* Only show notification bell for professionals */}
-              {profile?.user_type === 'professional' && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="relative hover:bg-white/10"
-                  aria-label="Notifications"
-                >
-                  <Bell className="w-4 h-4" />
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                </Button>
-              )}
-
               {/* Enhanced User Menu - Fixed for Mobile */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -226,6 +226,22 @@ export function Header() {
               ))}
             </div>
             
+            {/* Bolt Badge - Mobile */}
+            <div className="flex justify-center pt-4 border-t border-white/10">
+              <a
+                href="https://bolt.new"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500 to-blue-600 text-white text-sm font-medium hover:scale-105 transition-all duration-200 shadow-lg"
+                onClick={() => setIsMenuOpen(false)}
+                aria-label="Built with Bolt - Open in new tab"
+              >
+                <Zap className="w-4 h-4" />
+                <span>Built with Bolt</span>
+                <ExternalLink className="w-3 h-3 opacity-70" />
+              </a>
+            </div>
+            
             {/* Controls */}
             <div className="flex items-center justify-center gap-4 pt-4 border-t border-white/10">
               <AudioDescriptionToggle />
@@ -258,12 +274,6 @@ export function Header() {
                       <span className="text-xs text-green-600 font-medium">Online</span>
                     </div>
                   </div>
-                  {/* Only show notification for professionals in mobile */}
-                  {profile?.user_type === 'professional' && (
-                    <div className="flex-shrink-0">
-                      <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                    </div>
-                  )}
                 </div>
 
                 {/* Dashboard Button */}
